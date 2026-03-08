@@ -40,9 +40,15 @@ func performSync(db *gorm.DB) {
 	log.Println("Starting sync...")
 
 	info, err := os.Stat(config.DBPath)
-	modTime := time.Time{}
 	if err != nil {
-		modTime = info.ModTime()
+		log.Fatalln("Couldnt stat database file")
+	}
+
+	modTime := info.ModTime()
+	var count int64
+	db.Model(&models.Image{}).Count(&count)
+	if count == 0 {
+		modTime = time.Time{}
 	}
 
 	var syncedCount uint64
@@ -54,10 +60,14 @@ func performSync(db *gorm.DB) {
 		}
 
 		var image models.Image
-		query := db.Model(&models.Image{}).Where("path = ?", relPath)
-		if err := query.First(&image).Error; err != nil {
+		err = db.Model(&models.Image{}).Where("path = ?", relPath).First(&image).Error
+
+		if err == nil {
 			db.Exec("DELETE FROM search_index WHERE image_id = ?", image.ID)
-			db.Delete(image)
+			db.Delete(&image)
+		} else if err != gorm.ErrRecordNotFound {
+			log.Printf("DB error querying image %s: %v", relPath, err)
+			return
 		}
 
 		newImg := models.Image{
@@ -68,6 +78,8 @@ func performSync(db *gorm.DB) {
 		if err := db.Create(&newImg).Error; err == nil {
 			extractAndSaveMetadata(db, &newImg, path)
 			atomic.AddUint64(&syncedCount, 1)
+		} else {
+			log.Printf("Failed to create image record for %s: %v", relPath, err)
 		}
 	})
 
@@ -105,7 +117,11 @@ func extractAndSaveMetadata(db *gorm.DB, img *models.Image, fullPath string) {
 	// 	db.Create(&metaRows)
 	// }
 
-	updateFTS(db, img, &metaRows)
+	if len(metaRows) > 0 {
+		updateFTS(db, img, &metaRows)
+	} else {
+		updateFTS(db, img, nil)
+	}
 }
 
 func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata) {
@@ -113,7 +129,7 @@ func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata)
 
 	fullContent := img.Path + " " + img.Prompt
 	db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, '', ?)", img.ID, fullContent)
-	if metaData != nil {
+	if metaData != nil && len(*metaData) > 0 {
 		for i := range *metaData {
 			metaItem := &(*metaData)[i]
 			db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, ?, ?)", img.ID, metaItem.Key, metaItem.Value)

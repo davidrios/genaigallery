@@ -131,6 +131,7 @@ func Browse(c *gin.Context) {
 		}
 	}
 
+	// Images
 	query := db.Model(&models.Image{})
 
 	if q != "" {
@@ -151,6 +152,25 @@ func Browse(c *gin.Context) {
 			}
 		}
 	} else {
+		// Filter by directory
+		// We store relative path in DB.
+		// "folder/img.png".
+		// We want all images where dirname(path) == pathParam.
+		// SQL: WHERE path LIKE 'pathParam/%' AND path NOT LIKE 'pathParam/%/%' ?
+		// Too complex with SQL string manipulation.
+		// We can filter in memory or use exact folder check if we stored folder separate.
+		// Python code filtered in Memory! "results.append(img) if dirname == path".
+		// We can try to filter in DB if possible.
+		// If pathParam is empty (root), we want no slashes in path (or dirname is ".").
+		// If pathParam is "foo", we want "foo/xxx.png".
+
+		// Let's do memory filtering if dataset is small, but if DB is large, this is bad.
+		// Python code fetched ALL images then filtered. Not scalable but simple.
+		// I will do Filter in Memory for now to match behavior, but optimize slightly by pre-filtering prefix?
+		// query = query.Where("path LIKE ?", pathParam + "%")
+		// But that includes subdirectories.
+		// Let's match Python "fetch all then filter" for compatibility with "reimplement same features", but I'll add the prefix filter optimization.
+
 		if pathParam == "" {
 			// Root: path has no separator? Or ./
 			// We can't easily query "no slash" cross-db.
