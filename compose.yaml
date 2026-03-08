@@ -1,0 +1,39 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ./docker/Dockerfile
+    environment:
+      PORT: "${WEB_HOST_PORT:-5775}"
+      IMAGES_DIR: /images
+      COPY_GO_LIB: "${COPY_GO_LIB}"
+    volumes:
+      - .:/workdir
+      - "${LOCAL_IMAGES_DIR:-./example_images}:/images"
+    init: true
+    command: ["/workdir/backend/docker/run.sh"]
+
+  frontend:
+    image: node:22.14-slim
+    environment:
+      WEB_HOST_PORT: "${WEB_HOST_PORT:-5775}"
+    volumes:
+      - ./frontend:/workdir/frontend
+    init: true
+    working_dir: /workdir/frontend
+    command: 
+      - sh
+      - -c
+      - npm install && (while true; do npm run dev -- --host 0.0.0.0 --port $WEB_HOST_PORT; echo crashed, restarting... && sleep 3; done)
+
+  nginx:
+    image: nginx
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - ./docker/nginx.conf.template:/etc/nginx/templates/genaigallery.conf.template
+    environment:
+      WEB_HOST_PORT: "${WEB_HOST_PORT:-5775}"
+    ports:
+      - "${WEB_HOST_PORT:-5775}:${WEB_HOST_PORT:-5775}"
