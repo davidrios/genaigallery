@@ -15,7 +15,7 @@ import (
 )
 
 func TestFindModifiedMedia(t *testing.T) {
-	rootDir := "fixtures"
+	rootDir := "../../testdata/fixtures"
 
 	zeroTime := time.Time{}
 
@@ -78,8 +78,8 @@ func TestPerformSync(t *testing.T) {
 		t.Fatalf("Could not determine cwd: %v", err)
 	}
 
-	config.ImagesDir = filepath.Join(cwd, "fixtures")
-	config.DBPath = filepath.Join(cwd, "fixtures", "test.db")
+	config.ImagesDir = filepath.Join(cwd, "..", "..", "testdata", "fixtures")
+	config.DBPath = filepath.Join(cwd, "..", "..", "testdata", "fixtures", "test.db")
 
 	err = os.Remove(config.DBPath)
 	if err != nil && !os.IsNotExist(err) {

@@ -14,7 +14,6 @@ type MetadataItem struct {
 	Value string
 }
 
-// ExtractMetadata reads ComfyUI metadata from PNG
 func ExtractMetadata(filepath string) ([]MetadataItem, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
