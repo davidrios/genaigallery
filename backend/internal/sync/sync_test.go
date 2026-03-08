@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
 	"genai-gallery-backend/internal/config"
 	"genai-gallery-backend/internal/database"
 	"genai-gallery-backend/internal/models"
@@ -50,6 +52,16 @@ func TestFindModifiedMedia(t *testing.T) {
 	if len(futureDiscoveredFiles) > 0 {
 		t.Errorf("Expected 0 files modified in the future, got %d", len(futureDiscoveredFiles))
 	}
+}
+
+func setupTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	// Use in-memory sqlite via the official backend initialization
+	// InitDB adds `?_journal_mode=WAL&_busy_timeout=5000` to the db string internally
+	database.InitDB("file::memory:")
+	
+	return database.GetDB()
 }
 
 func TestPerformSync(t *testing.T) {
@@ -154,5 +166,60 @@ func TestPerformSync(t *testing.T) {
 	}
 	if diffCount != 1 {
 		t.Errorf("Expected exactly 1 new/different ID, got %d", diffCount)
+	}
+}
+
+func TestUpdateFTS(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Stub an image
+	img := models.Image{
+		Path:   "test_prefix.png",
+		Prompt: "A test prompt",
+	}
+	db.Create(&img)
+
+	meta := []models.ImageMetadata{
+		{Key: "meta10", Value: "apple"},
+		{Key: "meta123", Value: "banana"},
+		{Key: "meta999", Value: "cherry"},
+		{Key: "other", Value: "dog"},
+	}
+
+	updateFTS(db, &img, &meta)
+
+	// Verify the database state using Raw SQL
+	type SearchRow struct {
+		ImageID uint   `gorm:"column:image_id"`
+		Prefix  string `gorm:"column:prefix"`
+		Content string `gorm:"column:content"`
+	}
+
+	var rows []SearchRow
+	err := db.Raw("SELECT image_id, prefix, content FROM search_index WHERE image_id = ?", img.ID).Scan(&rows).Error
+	if err != nil {
+		t.Fatalf("Failed to query search_index: %v", err)
+	}
+
+	// We expect 3 rows in search_index:
+	// 1. The main image row (prefix='')
+	// 2. The 'meta' prefixed grouped row
+	// 3. The 'other' prefixed row
+	if len(rows) != 3 {
+		t.Fatalf("Expected 3 rows in search_index, got %d", len(rows))
+	}
+
+	foundMeta := false
+	for _, row := range rows {
+		if row.Prefix == "meta" {
+			foundMeta = true
+			if !strings.Contains(row.Content, "apple") || !strings.Contains(row.Content, "banana") || !strings.Contains(row.Content, "cherry") {
+				t.Errorf("Prefix 'meta' content did not group correctly: %s", row.Content)
+			}
+		}
+	}
+
+	if !foundMeta {
+		t.Errorf("Did not find the grouped 'meta' prefix in search_index")
 	}
 }

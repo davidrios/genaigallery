@@ -64,6 +64,7 @@ func performSync(db *gorm.DB) {
 
 		if err == nil {
 			db.Exec("DELETE FROM search_index WHERE image_id = ?", image.ID)
+			db.Exec("DELETE FROM image_metadata WHERE image_id = ?", image.ID)
 			db.Delete(&image)
 		} else if err != gorm.ErrRecordNotFound {
 			log.Printf("DB error querying image %s: %v", relPath, err)
@@ -113,9 +114,9 @@ func extractAndSaveMetadata(db *gorm.DB, img *models.Image, fullPath string) {
 		})
 	}
 
-	// if len(metaRows) > 0 {
-	// 	db.Create(&metaRows)
-	// }
+	if len(metaRows) > 0 {
+		db.Create(&metaRows)
+	}
 
 	if len(metaRows) > 0 {
 		updateFTS(db, img, &metaRows)
@@ -130,9 +131,26 @@ func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata)
 	fullContent := img.Path + " " + img.Prompt
 	db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, '', ?)", img.ID, fullContent)
 	if metaData != nil && len(*metaData) > 0 {
+		grouped := make(map[string]string)
+		
 		for i := range *metaData {
 			metaItem := &(*metaData)[i]
-			db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, ?, ?)", img.ID, metaItem.Key, metaItem.Value)
+			
+			// Extract prefix by stripping trailing digits
+			prefix := metaItem.Key
+			for len(prefix) > 0 && prefix[len(prefix)-1] >= '0' && prefix[len(prefix)-1] <= '9' {
+				prefix = prefix[:len(prefix)-1]
+			}
+			
+			if existing, ok := grouped[prefix]; ok {
+				grouped[prefix] = existing + " " + metaItem.Value
+			} else {
+				grouped[prefix] = metaItem.Value
+			}
+		}
+
+		for prefix, content := range grouped {
+			db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, ?, ?)", img.ID, prefix, content)
 		}
 	}
 }
