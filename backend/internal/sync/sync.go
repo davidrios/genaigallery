@@ -1,16 +1,15 @@
 package sync
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
-	"fmt"
-	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/charlievieth/fastwalk"
 	"gorm.io/gorm"
 
 	"genai-gallery-backend/internal/config"
@@ -19,13 +18,12 @@ import (
 )
 
 var (
-	syncLock     sync.Mutex
-	lastSyncTime time.Time
-	syncCooldown = 2 * time.Second
+	syncDone bool
+	syncLock sync.Mutex
 )
 
 func CheckSync(db *gorm.DB) {
-	if time.Since(lastSyncTime) < syncCooldown {
+	if syncDone {
 		return
 	}
 
@@ -34,126 +32,66 @@ func CheckSync(db *gorm.DB) {
 	}
 	defer syncLock.Unlock()
 
-	if time.Since(lastSyncTime) < syncCooldown {
-		return
-	}
-
 	performSync(db)
-	lastSyncTime = time.Now()
+	syncDone = true
 }
 
 func performSync(db *gorm.DB) {
-	fmt.Println("Starting sync...")
-	var images []models.Image
-	if err := db.Find(&images).Error; err != nil {
-		fmt.Println("Error loading images:", err)
-		return
+	log.Println("Starting sync...")
+
+	info, err := os.Stat(config.DBPath)
+	modTime := time.Time{}
+	if err != nil {
+		modTime = info.ModTime()
 	}
 
-	existingByHash := make(map[string]*models.Image)
-	existingByPath := make(map[string]*models.Image)
+	var syncedCount uint64
 
-	for i := range images {
-		img := &images[i]
-		existingByHash[img.Hash] = img
-		existingByPath[img.Path] = img
-	}
-
-	err := filepath.Walk(config.ImagesDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil
-		}
-		if info.IsDir() {
-			return nil
-		}
-
-		ext := strings.ToLower(filepath.Ext(path))
-		if ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".webp" && ext != ".mp4" && ext != ".mov" {
-			return nil
-		}
-
+	err = findModifiedMedia(config.ImagesDir, modTime, func(path string, d os.DirEntry) {
 		relPath, err := filepath.Rel(config.ImagesDir, path)
 		if err != nil {
-			return nil
+			return
 		}
 
-		hash, err := calculateSHA1(path)
-		if err != nil {
-			return nil
+		var image models.Image
+		query := db.Model(&models.Image{}).Where("path = ?", relPath)
+		if err := query.First(&image).Error; err != nil {
+			db.Exec("DELETE FROM search_index WHERE image_id = ?", image.ID)
+			db.Delete(image)
 		}
 
-		existingImg, hashExists := existingByHash[hash]
-
-		// Check if path occupied by stale entry
-		if occupant, ok := existingByPath[relPath]; ok {
-			if occupant.Hash != hash {
-				db.Delete(occupant)
-				if occupant.Hash != "" {
-					delete(existingByHash, occupant.Hash)
-				}
-				delete(existingByPath, relPath)
-			}
+		newImg := models.Image{
+			Path:      relPath,
+			CreatedAt: info.ModTime(),
 		}
 
-		if !hashExists {
-			newImg := models.Image{
-				Hash:      hash,
-				Path:      relPath,
-				CreatedAt: info.ModTime(),
-			}
-			if err := db.Create(&newImg).Error; err == nil {
-				extractAndSaveMetadata(db, &newImg, path)
-				existingByHash[hash] = &newImg
-				existingByPath[relPath] = &newImg
-			}
-		} else {
-			// Update path if changed
-			if existingImg.Path != relPath {
-				existingImg.Path = relPath
-				db.Save(existingImg)
-				existingByPath[relPath] = existingImg
-			}
-			// We could check if metadata missing here
+		if err := db.Create(&newImg).Error; err == nil {
+			extractAndSaveMetadata(db, &newImg, path)
+			atomic.AddUint64(&syncedCount, 1)
 		}
-
-		return nil
 	})
 
 	if err != nil {
-		fmt.Println("Walk error:", err)
+		log.Println("Error syncing")
+		return
 	}
-	fmt.Println("Sync complete")
-}
 
-func calculateSHA1(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	h := sha1.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	log.Printf("Synced %d files.\n", atomic.LoadUint64(&syncedCount))
 }
 
 func extractAndSaveMetadata(db *gorm.DB, img *models.Image, fullPath string) {
 	if !strings.HasSuffix(strings.ToLower(fullPath), ".png") {
-		// Just index clean path for non-png
-		updateFTS(db, img, "")
+		updateFTS(db, img, nil)
 		return
 	}
 
 	items, err := metadata.ExtractMetadata(fullPath)
 	if err != nil {
-		updateFTS(db, img, "")
+		updateFTS(db, img, nil)
 		return
 	}
 
 	var metaRows []models.ImageMetadata
-	var contentBuilder strings.Builder
 
 	for _, item := range items {
 		metaRows = append(metaRows, models.ImageMetadata{
@@ -161,20 +99,49 @@ func extractAndSaveMetadata(db *gorm.DB, img *models.Image, fullPath string) {
 			Key:     item.Key,
 			Value:   item.Value,
 		})
-		contentBuilder.WriteString(item.Value)
-		contentBuilder.WriteString(" ")
 	}
 
-	if len(metaRows) > 0 {
-		db.Create(&metaRows)
-	}
+	// if len(metaRows) > 0 {
+	// 	db.Create(&metaRows)
+	// }
 
-	updateFTS(db, img, contentBuilder.String())
+	updateFTS(db, img, &metaRows)
 }
 
-func updateFTS(db *gorm.DB, img *models.Image, extraContent string) {
+func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata) {
 	db.Exec("DELETE FROM search_index WHERE image_id = ?", img.ID)
 
-	fullContent := img.Path + " " + img.Prompt + " " + extraContent
-	db.Exec("INSERT INTO search_index (image_id, content) VALUES (?, ?)", img.ID, fullContent)
+	fullContent := img.Path + " " + img.Prompt
+	db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, '', ?)", img.ID, fullContent)
+	if metaData != nil {
+		for i := range *metaData {
+			metaItem := &(*metaData)[i]
+			db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, ?, ?)", img.ID, metaItem.Key, metaItem.Value)
+		}
+	}
+}
+
+func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(string, os.DirEntry)) error {
+	err := fastwalk.Walk(nil, rootDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		ext := strings.ToLower(filepath.Ext(d.Name()))
+		if ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".mp4" || ext == ".mov" || ext == ".mkv" || ext == ".webm" {
+			info, err := d.Info()
+			if err == nil {
+				if info.ModTime().After(dbModTime) {
+					processFunc(path, d)
+				}
+			}
+		}
+		return nil
+	})
+
+	return err
 }
