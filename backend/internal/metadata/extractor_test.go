@@ -3,7 +3,6 @@ package metadata
 import (
 	"encoding/binary"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -62,8 +61,35 @@ func createDummyPNG(t *testing.T, chunks map[string]string) string {
 }
 
 func TestExtractMetadata(t *testing.T) {
-	t.Run("ValidComfyUIPrompt", func(t *testing.T) {
-		pngPath := filepath.Join("../../testdata/fixtures", "ComfyUI_00001_.png")
+	t.Run("ValidComfyUIPNG", func(t *testing.T) {
+		pngPath := "../../testdata/fixtures/ComfyUI_00001_.png"
+
+		items, err := ExtractMetadata(pngPath)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(items) == 0 {
+			t.Fatalf("expected items extracted, got 0")
+		}
+
+		// Spot check a few known metadata keys that should exist in a comfyUI image
+		expectedKeys := []string{"seed", "steps", "cfg", "sampler_name"}
+		foundMap := make(map[string]bool)
+
+		for _, item := range items {
+			foundMap[item.Key] = true
+		}
+
+		for _, expectedKey := range expectedKeys {
+			if !foundMap[expectedKey] {
+				t.Errorf("expected to find metadata key %s, but didn't", expectedKey)
+			}
+		}
+	})
+
+	t.Run("ValidComfyUIMP4", func(t *testing.T) {
+		pngPath := "../../testdata/fixtures/video/ComfyUI_00001_.mp4"
 
 		items, err := ExtractMetadata(pngPath)
 		if err != nil {
