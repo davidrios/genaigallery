@@ -100,7 +100,7 @@ func TestPerformSync(t *testing.T) {
 		t.Errorf("Expected metadata to be extracted from test images, but got 0 meta rows")
 	}
 
-	// 2. Secondary Sync (No changes)
+	// second sync (no changes)
 	performSync(db)
 
 	var secondImageSet []models.Image
@@ -110,12 +110,49 @@ func TestPerformSync(t *testing.T) {
 		t.Errorf("Secondary sync changed image count: expected %d, got %d", len(images), len(secondImageSet))
 	}
 
-	newTime := time.Now()
+	info, err := os.Stat(config.DBPath)
+	if err != nil {
+		t.Fatal("Couldnt stat database file")
+	}
+
+	t.Log(info.ModTime())
+
+	newTime := info.ModTime().Add(time.Second * 10)
 	err = os.Chtimes(filepath.Join(config.ImagesDir, "ComfyUI_00001_.png"), newTime, newTime)
 	if err != nil {
 		t.Fatalf("unable to change file time")
 	}
 
+	// third sync, 1 updated file
+	performSync(db)
+
 	var thirdImageSet []models.Image
 	db.Find(&thirdImageSet)
+
+	if len(thirdImageSet) != len(images) {
+		t.Fatalf("Third sync changed total image count: expected %d, got %d", len(images), len(thirdImageSet))
+	}
+
+	// Compare IDs between initial set and third set
+	initialIDs := make(map[uint]bool)
+	for _, img := range images {
+		initialIDs[img.ID] = true
+	}
+
+	matchCount := 0
+	diffCount := 0
+	for _, img := range thirdImageSet {
+		if initialIDs[img.ID] {
+			matchCount++
+		} else {
+			diffCount++
+		}
+	}
+
+	if matchCount != len(images)-1 {
+		t.Errorf("Expected %d matching IDs, got %d", len(images)-1, matchCount)
+	}
+	if diffCount != 1 {
+		t.Errorf("Expected exactly 1 new/different ID, got %d", diffCount)
+	}
 }
