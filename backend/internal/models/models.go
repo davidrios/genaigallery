@@ -5,8 +5,7 @@ import (
 )
 
 type Image struct {
-	ID uint `gorm:"primaryKey;autoIncrement" json:"id"`
-	// Hash      string    `gorm:"type:varchar(255);index;unique" json:"hash"`
+	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	Path      string    `gorm:"type:varchar(1024);uniqueIndex" json:"path"`
 	Prompt    string    `gorm:"type:text" json:"prompt"`
 	CreatedAt time.Time `json:"created_at"`
