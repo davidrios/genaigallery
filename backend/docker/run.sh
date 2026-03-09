@@ -18,7 +18,7 @@ while true; do
         -D \
         --kill-after 1 \
         --interval 0.3 \
-		go -- run --tags "fts5" cmd/server/main.go
+		sh -- -c 'go run --tags "fts5" cmd/server/main.go || pkill -f "/root/.cache/go-build" && sleep 1'
     sleep 1
 done
 
