@@ -57,8 +57,6 @@ func TestFindModifiedMedia(t *testing.T) {
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	// Use in-memory sqlite via the official backend initialization
-	// InitDB adds `?_journal_mode=WAL&_busy_timeout=5000` to the db string internally
 	database.InitDB("file::memory:")
 	
 	return database.GetDB()
