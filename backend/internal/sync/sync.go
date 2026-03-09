@@ -132,16 +132,16 @@ func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata)
 	db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, '', ?)", img.ID, fullContent)
 	if metaData != nil && len(*metaData) > 0 {
 		grouped := make(map[string]string)
-		
+
 		for i := range *metaData {
 			metaItem := &(*metaData)[i]
-			
+
 			// Extract prefix by stripping trailing digits
 			prefix := metaItem.Key
 			for len(prefix) > 0 && prefix[len(prefix)-1] >= '0' && prefix[len(prefix)-1] <= '9' {
 				prefix = prefix[:len(prefix)-1]
 			}
-			
+
 			if existing, ok := grouped[prefix]; ok {
 				grouped[prefix] = existing + " " + metaItem.Value
 			} else {
