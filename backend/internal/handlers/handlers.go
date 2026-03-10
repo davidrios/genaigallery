@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"mime/multipart"
 	"net/http"
@@ -196,36 +198,42 @@ func Browse(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func UploadCore(files []*multipart.FileHeader, prefix string) ([]models.Image, error) {
+func UploadCore(files []*multipart.FileHeader, prefix string) ([]*models.Image, error) {
 	prefix = strings.Trim(prefix, "/")
 
-	dirName := filepath.Dir(prefix)
-	if dirName == "." {
-		dirName = ""
+	if strings.Contains(prefix, "..") {
+		return nil, errors.New("invalid prefix path")
 	}
+
+	dirName := filepath.Dir(prefix)
 	baseName := filepath.Base(prefix)
 	if baseName == "." {
 		baseName = ""
 	}
 
 	fullDir := filepath.Join(config.ImagesDir, dirName)
-	os.MkdirAll(fullDir, 0755)
+	err := os.MkdirAll(fullDir, 0755)
+	if err != nil {
+		return nil, err
+	}
 
 	db := database.GetDB()
-	var createdImages []models.Image
+	var createdImages []*models.Image
 
 	for _, file := range files {
 		timestamp := time.Now().Format("20060102150405")
-		filename := fmt.Sprintf("%s_%s_%s", baseName, timestamp, file.Filename)
+		filename := fmt.Sprintf("%s_%s%s", baseName, timestamp, filepath.Ext(file.Filename))
 		savePath := filepath.Join(fullDir, filename)
 
 		src, err := file.Open()
 		if err != nil {
+			log.Printf("Error opening uploaded file: %v", err)
 			continue
 		}
 
-		dst, err := os.Create(savePath)
+		dst, err := os.OpenFile(savePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 		if err != nil {
+			log.Printf("Error creating image file: %v", err)
 			src.Close()
 			continue
 		}
@@ -233,12 +241,20 @@ func UploadCore(files []*multipart.FileHeader, prefix string) ([]models.Image, e
 		_, err = io.Copy(dst, src)
 		src.Close()
 		dst.Close()
+
 		if err != nil {
+			log.Printf("Error copying image file contents: %v", err)
 			continue
 		}
-	}
 
-	gallerysync.CheckSync(db)
+		img, err := gallerysync.AddImage(db, savePath, time.Now(), false)
+		if err != nil {
+			log.Printf("Error adding image: %v", err)
+			continue
+		}
+
+		createdImages = append(createdImages, img)
+	}
 
 	return createdImages, nil
 }

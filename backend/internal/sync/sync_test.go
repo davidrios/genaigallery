@@ -87,7 +87,7 @@ func TestPerformSync(t *testing.T) {
 	database.InitDB(config.DBPath)
 	db := database.GetDB()
 
-	performSync(db)
+	PerformSync(db)
 
 	var images []models.Image
 	db.Find(&images)
@@ -121,7 +121,7 @@ func TestPerformSync(t *testing.T) {
 	}
 
 	// second sync (no changes)
-	performSync(db)
+	PerformSync(db)
 
 	var secondImageSet []models.Image
 	db.Find(&secondImageSet)
@@ -144,7 +144,7 @@ func TestPerformSync(t *testing.T) {
 	}
 
 	// third sync, 1 updated file
-	performSync(db)
+	PerformSync(db)
 
 	var thirdImageSet []models.Image
 	db.Find(&thirdImageSet)

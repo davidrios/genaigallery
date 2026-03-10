@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -32,11 +33,46 @@ func CheckSync(db *gorm.DB) {
 	}
 	defer syncLock.Unlock()
 
-	performSync(db)
+	PerformSync(db)
 	syncDone = true
 }
 
-func performSync(db *gorm.DB) {
+func AddImage(db *gorm.DB, path string, modtime time.Time, replace bool) (*models.Image, error) {
+	relPath, err := filepath.Rel(config.ImagesDir, path)
+	if err != nil {
+		return nil, err
+	}
+
+	var image models.Image
+	err = db.Model(&models.Image{}).Where("path = ?", relPath).First(&image).Error
+
+	if err == nil {
+		if replace {
+			db.Exec("DELETE FROM search_index WHERE image_id = ?", image.ID)
+			db.Exec("DELETE FROM image_metadata WHERE image_id = ?", image.ID)
+			db.Delete(&image)
+		} else {
+			return nil, errors.New("image already exists in DB")
+		}
+	} else if err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+
+	newImg := models.Image{
+		Path:      relPath,
+		CreatedAt: modtime,
+	}
+
+	err = db.Create(&newImg).Error
+	if err != nil {
+		return nil, err
+	}
+
+	extractAndSaveMetadata(db, &newImg, path)
+	return &newImg, nil
+}
+
+func PerformSync(db *gorm.DB) {
 	log.Println("Starting sync...")
 
 	info, err := os.Stat(config.DBPath)
@@ -54,34 +90,13 @@ func performSync(db *gorm.DB) {
 	var syncedCount uint64
 
 	err = findModifiedMedia(config.ImagesDir, modTime, func(path string, modtime time.Time) {
-		relPath, err := filepath.Rel(config.ImagesDir, path)
+		_, err := AddImage(db, path, modtime, true)
 		if err != nil {
+			log.Printf("Error adding image %s: %v", path, err)
 			return
 		}
 
-		var image models.Image
-		err = db.Model(&models.Image{}).Where("path = ?", relPath).First(&image).Error
-
-		if err == nil {
-			db.Exec("DELETE FROM search_index WHERE image_id = ?", image.ID)
-			db.Exec("DELETE FROM image_metadata WHERE image_id = ?", image.ID)
-			db.Delete(&image)
-		} else if err != gorm.ErrRecordNotFound {
-			log.Printf("DB error querying image %s: %v", relPath, err)
-			return
-		}
-
-		newImg := models.Image{
-			Path:      relPath,
-			CreatedAt: modtime,
-		}
-
-		if err := db.Create(&newImg).Error; err == nil {
-			extractAndSaveMetadata(db, &newImg, path)
-			atomic.AddUint64(&syncedCount, 1)
-		} else {
-			log.Printf("Failed to create image record for %s: %v", relPath, err)
-		}
+		atomic.AddUint64(&syncedCount, 1)
 	})
 
 	if err != nil {
