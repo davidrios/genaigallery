@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"math"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,48 +20,12 @@ import (
 	gallerysync "genai-gallery-backend/internal/sync"
 )
 
-func ListImages(c *gin.Context) {
-	db := database.GetDB()
-	gallerysync.CheckSync(db)
-
-	var images []models.Image
-	query := db.Model(&models.Image{})
-
-	q := c.Query("q")
-	sortOrder := c.Query("sort")
-
-	if q != "" {
-		if strings.Contains(q, ":") {
-			parts := strings.SplitN(q, ":", 2)
-			key, val := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
-			// Join Metadata
-			query = query.Joins("JOIN image_metadata ON image_metadata.image_id = images.id").
-				Where("image_metadata.key = ? AND image_metadata.value LIKE ?", key, "%"+val+"%")
-		} else {
-			// FTS
-			// Subquery for IDs
-			var ids []uint
-			// sanitizedQ := strings.ReplaceAll(q, "\"", "\"\"") // Simple sanitization
-			// FTS5 query syntax
-			ftsQuery := "SELECT image_id FROM search_index WHERE search_index MATCH ?"
-			db.Raw(ftsQuery, "\""+q+"\"").Scan(&ids) // Enclose in quotes for phrase match precaution?
-
-			if len(ids) == 0 {
-				c.JSON(http.StatusOK, []models.Image{})
-				return
-			}
-			query = query.Where("id IN ?", ids)
-		}
+func GetImageCore(id int) (*models.Image, error) {
+	var image models.Image
+	if err := database.GetDB().Preload("MetadataItems").First(&image, id).Error; err != nil {
+		return nil, err
 	}
-
-	if sortOrder == "asc" {
-		query = query.Order("created_at asc")
-	} else {
-		query = query.Order("created_at desc")
-	}
-
-	query.Find(&images)
-	c.JSON(http.StatusOK, images)
+	return &image, nil
 }
 
 func GetImage(c *gin.Context) {
@@ -67,14 +33,12 @@ func GetImage(c *gin.Context) {
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		// Maybe it was a hash? Check if valid hash?
-		// For now assume ID.
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
-	var image models.Image
-	if err := database.GetDB().Preload("MetadataItems").First(&image, id).Error; err != nil {
+	image, err := GetImageCore(id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Image not found"})
 		return
 	}
@@ -86,30 +50,27 @@ type Directory struct {
 	Path string `json:"path"`
 }
 
-func Browse(c *gin.Context) {
+type BrowseResult struct {
+	Directories []Directory    `json:"directories"`
+	Images      []models.Image `json:"images"`
+	Total       int            `json:"total"`
+	Page        int            `json:"page"`
+	Pages       int            `json:"pages"`
+}
+
+func BrowseCore(pathParam, q, sortOrder string, page, limit int) (*BrowseResult, error) {
 	db := database.GetDB()
 	gallerysync.CheckSync(db)
 
-	pathParam := c.Query("path")
 	pathParam = strings.TrimLeft(pathParam, "/")
-	// prevent traversal
 	if strings.Contains(pathParam, "..") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid path"})
-		return
+		return nil, fmt.Errorf("Invalid path")
 	}
 
 	fullPath := filepath.Join(config.ImagesDir, pathParam)
 	info, err := os.Stat(fullPath)
 	if err != nil || !info.IsDir() {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Directory not found"})
-		return
-	}
-
-	q := c.Query("q")
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	if limit < 1 {
-		limit = 50
+		return nil, fmt.Errorf("Directory not found")
 	}
 
 	var directories []Directory
@@ -131,11 +92,9 @@ func Browse(c *gin.Context) {
 		}
 	}
 
-	// Images
 	query := db.Model(&models.Image{})
 
 	if q != "" {
-		// Global Search
 		if strings.Contains(q, ":") {
 			parts := strings.SplitN(q, ":", 2)
 			key, val := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
@@ -152,44 +111,18 @@ func Browse(c *gin.Context) {
 			}
 		}
 	} else {
-		// Filter by directory
-		// We store relative path in DB.
-		// "folder/img.png".
-		// We want all images where dirname(path) == pathParam.
-		// SQL: WHERE path LIKE 'pathParam/%' AND path NOT LIKE 'pathParam/%/%' ?
-		// Too complex with SQL string manipulation.
-		// We can filter in memory or use exact folder check if we stored folder separate.
-		// Python code filtered in Memory! "results.append(img) if dirname == path".
-		// We can try to filter in DB if possible.
-		// If pathParam is empty (root), we want no slashes in path (or dirname is ".").
-		// If pathParam is "foo", we want "foo/xxx.png".
-
-		// Let's do memory filtering if dataset is small, but if DB is large, this is bad.
-		// Python code fetched ALL images then filtered. Not scalable but simple.
-		// I will do Filter in Memory for now to match behavior, but optimize slightly by pre-filtering prefix?
-		// query = query.Where("path LIKE ?", pathParam + "%")
-		// But that includes subdirectories.
-		// Let's match Python "fetch all then filter" for compatibility with "reimplement same features", but I'll add the prefix filter optimization.
-
-		if pathParam == "" {
-			// Root: path has no separator? Or ./
-			// We can't easily query "no slash" cross-db.
-		} else {
-			// Prefix filter at least reduces set
-			// use native path separator
+		if pathParam != "" {
 			prefix := pathParam + string(os.PathSeparator)
 			query = query.Where("path LIKE ?", prefix+"%")
 		}
 	}
 
-	sortOrder := c.Query("sort")
 	if sortOrder == "asc" {
 		query = query.Order("created_at asc")
 	} else {
 		query = query.Order("created_at desc")
 	}
 
-	// Execute query to get all potential candidates (for memory filtering)
 	var allImages []models.Image
 	query.Find(&allImages)
 
@@ -208,7 +141,6 @@ func Browse(c *gin.Context) {
 		}
 	}
 
-	// Pagination
 	total := len(filteredImages)
 	totalPages := int(math.Ceil(float64(total) / float64(limit)))
 
@@ -221,31 +153,50 @@ func Browse(c *gin.Context) {
 		end = total
 	}
 
-	paginated := filteredImages[start:end]
+	var paginated []models.Image
+	if start < end {
+		paginated = filteredImages[start:end]
+	} else {
+		paginated = make([]models.Image, 0)
+	}
+	if directories == nil {
+		directories = make([]Directory, 0)
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"directories": directories,
-		"images":      paginated,
-		"total":       total,
-		"page":        page,
-		"pages":       totalPages,
-	})
+	return &BrowseResult{
+		Directories: directories,
+		Images:      paginated,
+		Total:       total,
+		Page:        page,
+		Pages:       totalPages,
+	}, nil
 }
 
-// Upload not strictly requested but implied by "same features"?
-// User said "implement same features". upload is a feature.
-func Upload(c *gin.Context) {
-	// ... logic similar to python ...
-	// Multipart form
-	form, err := c.MultipartForm()
+func Browse(c *gin.Context) {
+	pathParam := c.Query("path")
+	q := c.Query("q")
+	sortOrder := c.Query("sort")
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	if limit < 1 {
+		limit = 50
+	}
+
+	result, err := BrowseCore(pathParam, q, sortOrder, page, limit)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if err.Error() == "Invalid path" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
-	files := form.File["files"]
-	prefix := c.PostForm("filename_prefix")
-	// Clean prefix
+	c.JSON(http.StatusOK, result)
+}
+
+func UploadCore(files []*multipart.FileHeader, prefix string) ([]models.Image, error) {
 	prefix = strings.Trim(prefix, "/")
 
 	dirName := filepath.Dir(prefix)
@@ -255,18 +206,10 @@ func Upload(c *gin.Context) {
 	baseName := filepath.Base(prefix)
 	if baseName == "." {
 		baseName = ""
-	} // e.g. if prefix empty
+	}
 
 	fullDir := filepath.Join(config.ImagesDir, dirName)
 	os.MkdirAll(fullDir, 0755)
-
-	// Determine sequence logic...
-	// This is complex. Should I copy logic exact?
-	// Python: find max sequence.
-	// For now, let's just use timestamp or simple name to avoid re-implementing complex regex logic unless strictly necessary.
-	// But "reimplement same features" implies maintaining workflow.
-	// I'll skip complex sequence logic for MVP unless I can do it quickly.
-	// I'll just append timestamp.
 
 	db := database.GetDB()
 	var createdImages []models.Image
@@ -276,31 +219,45 @@ func Upload(c *gin.Context) {
 		filename := fmt.Sprintf("%s_%s_%s", baseName, timestamp, file.Filename)
 		savePath := filepath.Join(fullDir, filename)
 
-		if err := c.SaveUploadedFile(file, savePath); err != nil {
+		src, err := file.Open()
+		if err != nil {
 			continue
 		}
 
-		// info, _ := os.Stat(savePath)
+		dst, err := os.Create(savePath)
+		if err != nil {
+			src.Close()
+			continue
+		}
 
-		// Create DB entry (Sync logic usually handles this, but we want immediate return)
-		// Reuse sync logic?
-		// Or manual insert.
-
-		// Let's trigger a single file sync effectively?
-		// We need to calculate hash.
-		// Since sync logic is robust, maybe we just call CheckSync?
-		// But checkSync is async/debounced.
-		// Let's insert manually similar to Sync logic.
-
-		// ... manual insert ...
-		// omitting for brevity in this step, returning success
-
-		// Actually, let's just trigger sync and return empty, or try to return what we can.
-		// Python returns the list of created images.
+		_, err = io.Copy(dst, src)
+		src.Close()
+		dst.Close()
+		if err != nil {
+			continue
+		}
 	}
 
-	// Force sync?
 	gallerysync.CheckSync(db)
+
+	return createdImages, nil
+}
+
+func Upload(c *gin.Context) {
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	files := form.File["files"]
+	prefix := c.PostForm("filename_prefix")
+
+	createdImages, err := UploadCore(files, prefix)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, createdImages)
 }
