@@ -53,7 +53,7 @@ func performSync(db *gorm.DB) {
 
 	var syncedCount uint64
 
-	err = findModifiedMedia(config.ImagesDir, modTime, func(path string, d os.DirEntry) {
+	err = findModifiedMedia(config.ImagesDir, modTime, func(path string, modtime time.Time) {
 		relPath, err := filepath.Rel(config.ImagesDir, path)
 		if err != nil {
 			return
@@ -73,7 +73,7 @@ func performSync(db *gorm.DB) {
 
 		newImg := models.Image{
 			Path:      relPath,
-			CreatedAt: info.ModTime(),
+			CreatedAt: modtime,
 		}
 
 		if err := db.Create(&newImg).Error; err == nil {
@@ -155,7 +155,7 @@ func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata)
 	}
 }
 
-func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(string, os.DirEntry)) error {
+func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(string, time.Time)) error {
 	err := fastwalk.Walk(nil, rootDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -166,14 +166,19 @@ func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(str
 		}
 
 		ext := strings.ToLower(filepath.Ext(d.Name()))
-		if ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".mp4" || ext == ".mov" || ext == ".mkv" || ext == ".webm" {
-			info, err := d.Info()
-			if err == nil {
-				if info.ModTime().After(dbModTime) {
-					processFunc(path, d)
-				}
-			}
+		if !(ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".mp4" || ext == ".mov" || ext == ".mkv" || ext == ".webm") {
+			return nil
 		}
+
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+
+		if info.ModTime().After(dbModTime) {
+			processFunc(path, info.ModTime())
+		}
+
 		return nil
 	})
 

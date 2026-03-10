@@ -20,7 +20,7 @@ func TestFindModifiedMedia(t *testing.T) {
 	zeroTime := time.Time{}
 
 	var discoveredFiles []string
-	err := findModifiedMedia(rootDir, zeroTime, func(path string, d os.DirEntry) {
+	err := findModifiedMedia(rootDir, zeroTime, func(path string, modtime time.Time) {
 		discoveredFiles = append(discoveredFiles, path)
 	})
 
@@ -41,7 +41,7 @@ func TestFindModifiedMedia(t *testing.T) {
 
 	futureTime := time.Now().Add(24 * time.Hour)
 	var futureDiscoveredFiles []string
-	err = findModifiedMedia(rootDir, futureTime, func(path string, d os.DirEntry) {
+	err = findModifiedMedia(rootDir, futureTime, func(path string, modtime time.Time) {
 		futureDiscoveredFiles = append(futureDiscoveredFiles, path)
 	})
 
@@ -58,7 +58,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	database.InitDB("file::memory:")
-	
+
 	return database.GetDB()
 }
 
@@ -96,10 +96,20 @@ func TestPerformSync(t *testing.T) {
 		t.Fatalf("Expected at least 5 media files synced on fresh db, got %d", len(images))
 	}
 
-	// Make sure paths are relative to ImagesDir
 	for _, img := range images {
+		// Make sure paths are relative to ImagesDir
 		if strings.HasPrefix(img.Path, config.ImagesDir) {
 			t.Errorf("Image path %s should be relative to ImagesDir, but is absolute", img.Path)
+		}
+
+		// Verify correct CreatedAt
+		info, err := os.Stat(filepath.Join(config.ImagesDir, img.Path))
+		if err != nil {
+			t.Fatal("Couldnt stat image file")
+		}
+
+		if !img.CreatedAt.Equal(info.ModTime()) {
+			t.Errorf("Image %s should have CreatedAt %s but has %s", img.Path, info.ModTime(), img.CreatedAt)
 		}
 	}
 
