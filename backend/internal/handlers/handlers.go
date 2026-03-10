@@ -55,17 +55,39 @@ type Directory struct {
 type BrowseResult struct {
 	Directories []Directory    `json:"directories"`
 	Images      []models.Image `json:"images"`
-	Total       int            `json:"total"`
+	Total       int64          `json:"total"`
 	Page        int            `json:"page"`
 	Pages       int            `json:"pages"`
 }
 
-func BrowseCore(pathParam, q, sortOrder string, page, limit int) (*BrowseResult, error) {
+func toFTSQuery(origStr string) string {
+	if strings.Contains(origStr, "\"") {
+		return origStr
+	}
+
+	ret := []string{}
+
+	for word := range strings.SplitSeq(origStr, " ") {
+		if word == "" {
+			continue
+		}
+
+		if word == "OR" || word == "AND" {
+			ret = append(ret, word)
+		} else {
+			ret = append(ret, fmt.Sprintf("\"%s\"", word))
+		}
+	}
+
+	return strings.Join(ret, " ")
+}
+
+func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page, limit int) (*BrowseResult, error) {
 	db := database.GetDB()
 	gallerysync.CheckSync(db)
 
 	pathParam = strings.TrimLeft(pathParam, "/")
-	if strings.Contains(pathParam, "..") {
+	if strings.Contains(pathParam, ".") {
 		return nil, fmt.Errorf("Invalid path")
 	}
 
@@ -96,78 +118,54 @@ func BrowseCore(pathParam, q, sortOrder string, page, limit int) (*BrowseResult,
 
 	query := db.Model(&models.Image{})
 
-	if q != "" {
+	if q != "" && (inPath || pathParam == "") {
+		baseSearchQuery := "JOIN (select image_id, min(rank) rank from search_index where _WHERE_ group by image_id order by rank) t1 on t1.image_id = images.id"
+
 		if strings.Contains(q, ":") {
 			parts := strings.SplitN(q, ":", 2)
-			key, val := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
-			query = query.Joins("JOIN image_metadata ON image_metadata.image_id = images.id").
-				Where("image_metadata.key = ? AND image_metadata.value LIKE ?", key, "%"+val+"%")
+			key, q := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+			q = toFTSQuery(q)
+			query = query.Joins(strings.Replace(baseSearchQuery, "_WHERE_", "content match ? and prefix = ?", 1), q, key)
 		} else {
-			var ids []uint
-			ftsQuery := "SELECT image_id FROM search_index WHERE search_index MATCH ?"
-			db.Raw(ftsQuery, "\""+q+"\"").Scan(&ids)
-			if len(ids) > 0 {
-				query = query.Where("id IN ?", ids)
-			} else {
-				query = query.Where("1 = 0")
-			}
-		}
-	} else {
-		if pathParam != "" {
-			prefix := pathParam + string(os.PathSeparator)
-			query = query.Where("path LIKE ?", prefix+"%")
+			q = toFTSQuery(q)
+			log.Println("q", q)
+			query = query.Joins(strings.Replace(baseSearchQuery, "_WHERE_", "content match ?", 1), q)
 		}
 	}
 
-	if sortOrder == "asc" {
-		query = query.Order("created_at asc")
-	} else {
-		query = query.Order("created_at desc")
+	if q == "" || inPath {
+		query = query.Where("path = ?", pathParam)
 	}
 
-	var allImages []models.Image
-	query.Find(&allImages)
-
-	var filteredImages []models.Image
-	if q != "" {
-		filteredImages = allImages
-	} else {
-		for _, img := range allImages {
-			dir := filepath.Dir(img.Path)
-			if dir == "." {
-				dir = ""
-			}
-			if dir == pathParam {
-				filteredImages = append(filteredImages, img)
-			}
-		}
+	if sortOrder != "asc" {
+		sortOrder = "desc"
 	}
 
-	total := len(filteredImages)
+	if q == "" {
+		query = query.Order("created_at " + sortOrder)
+	} else {
+		query = query.Order("rank asc, created_at " + sortOrder)
+	}
+
+	var total int64
+	query.Count(&total)
+
 	totalPages := int(math.Ceil(float64(total) / float64(limit)))
 
-	start := (page - 1) * limit
-	end := start + limit
-	if start > total {
-		start = total
-	}
-	if end > total {
-		end = total
-	}
+	start := int64((page - 1) * limit)
 
-	var paginated []models.Image
-	if start < end {
-		paginated = filteredImages[start:end]
-	} else {
-		paginated = make([]models.Image, 0)
-	}
+	query = query.Offset(int(start)).Limit(limit)
+
+	var images []models.Image
+	query.Find(&images)
+
 	if directories == nil {
 		directories = make([]Directory, 0)
 	}
 
 	return &BrowseResult{
 		Directories: directories,
-		Images:      paginated,
+		Images:      images,
 		Total:       total,
 		Page:        page,
 		Pages:       totalPages,
@@ -185,7 +183,7 @@ func Browse(c *gin.Context) {
 		limit = 50
 	}
 
-	result, err := BrowseCore(pathParam, q, sortOrder, page, limit)
+	result, err := BrowseCore(pathParam, q, false, sortOrder, page, limit)
 	if err != nil {
 		if err.Error() == "Invalid path" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -201,11 +199,14 @@ func Browse(c *gin.Context) {
 func UploadCore(files []*multipart.FileHeader, prefix string) ([]*models.Image, error) {
 	prefix = strings.Trim(prefix, "/")
 
-	if strings.Contains(prefix, "..") {
+	if strings.Contains(prefix, ".") {
 		return nil, errors.New("invalid prefix path")
 	}
 
 	dirName := filepath.Dir(prefix)
+	if dirName == "." {
+		dirName = ""
+	}
 	baseName := filepath.Base(prefix)
 	if baseName == "." {
 		baseName = ""

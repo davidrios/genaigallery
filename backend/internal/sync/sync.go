@@ -37,14 +37,20 @@ func CheckSync(db *gorm.DB) {
 	syncDone = true
 }
 
-func AddImage(db *gorm.DB, path string, modtime time.Time, replace bool) (*models.Image, error) {
-	relPath, err := filepath.Rel(config.ImagesDir, path)
+func AddImage(db *gorm.DB, origPath string, modtime time.Time, replace bool) (*models.Image, error) {
+	relPath, err := filepath.Rel(config.ImagesDir, origPath)
 	if err != nil {
 		return nil, err
 	}
 
+	path := filepath.Dir(relPath)
+	if path == "." {
+		path = ""
+	}
+	name := filepath.Base(relPath)
+
 	var image models.Image
-	err = db.Model(&models.Image{}).Where("path = ?", relPath).First(&image).Error
+	err = db.Model(&models.Image{}).Where("path = ? and name = ?", path, name).First(&image).Error
 
 	if err == nil {
 		if replace {
@@ -59,7 +65,8 @@ func AddImage(db *gorm.DB, path string, modtime time.Time, replace bool) (*model
 	}
 
 	newImg := models.Image{
-		Path:      relPath,
+		Path:      path,
+		Name:      name,
 		CreatedAt: modtime,
 	}
 
@@ -68,7 +75,7 @@ func AddImage(db *gorm.DB, path string, modtime time.Time, replace bool) (*model
 		return nil, err
 	}
 
-	extractAndSaveMetadata(db, &newImg, path)
+	extractAndSaveMetadata(db, &newImg, origPath)
 	return &newImg, nil
 }
 
@@ -108,7 +115,8 @@ func PerformSync(db *gorm.DB) {
 }
 
 func extractAndSaveMetadata(db *gorm.DB, img *models.Image, fullPath string) {
-	if !strings.HasSuffix(strings.ToLower(fullPath), ".png") {
+	pathLower := strings.ToLower(fullPath)
+	if !(strings.HasSuffix(pathLower, ".png") || strings.HasSuffix(pathLower, ".mp4")) {
 		updateFTS(db, img, nil)
 		return
 	}
@@ -143,7 +151,7 @@ func extractAndSaveMetadata(db *gorm.DB, img *models.Image, fullPath string) {
 func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata) {
 	db.Exec("DELETE FROM search_index WHERE image_id = ?", img.ID)
 
-	fullContent := img.Path + " " + img.Prompt
+	fullContent := img.Path + " " + img.Name + " " + img.CreatedAt.String()
 	db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, '', ?)", img.ID, fullContent)
 	if metaData != nil && len(*metaData) > 0 {
 		grouped := make(map[string]string)

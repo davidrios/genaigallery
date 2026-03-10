@@ -102,22 +102,24 @@ func TestPerformSync(t *testing.T) {
 			t.Errorf("Image path %s should be relative to ImagesDir, but is absolute", img.Path)
 		}
 
+		relPath := filepath.Join(img.Path, img.Name)
+
 		// Verify correct CreatedAt
-		info, err := os.Stat(filepath.Join(config.ImagesDir, img.Path))
+		info, err := os.Stat(filepath.Join(config.ImagesDir, relPath))
 		if err != nil {
 			t.Fatal("Couldnt stat image file")
 		}
 
 		if !img.CreatedAt.Equal(info.ModTime()) {
-			t.Errorf("Image %s should have CreatedAt %s but has %s", img.Path, info.ModTime(), img.CreatedAt)
+			t.Errorf("Image %s should have CreatedAt %s but has %s", relPath, info.ModTime(), img.CreatedAt)
 		}
 	}
 
-	// Verify metadata extraction roughly worked (the PNGs have metadata)
+	// Verify metadata extraction roughly worked (all files have metadata)
 	var metaCount int64
-	db.Raw("SELECT COUNT(1) FROM search_index").Scan(&metaCount)
-	if metaCount == 0 {
-		t.Errorf("Expected metadata to be extracted from test images, but got 0 meta rows")
+	db.Raw("select count(1) from (SELECT image_id, COUNT(1) FROM image_metadata GROUP BY image_id) t1").Scan(&metaCount)
+	if metaCount != 5 {
+		t.Errorf("Expected metadata to be extracted from %v test images, but got %v meta rows", 5, metaCount)
 	}
 
 	// second sync (no changes)
@@ -182,8 +184,8 @@ func TestUpdateFTS(t *testing.T) {
 
 	// Stub an image
 	img := models.Image{
-		Path:   "test_prefix.png",
-		Prompt: "A test prompt",
+		Path: "",
+		Name: "test_prefix.png",
 	}
 	db.Create(&img)
 

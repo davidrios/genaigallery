@@ -108,6 +108,8 @@ func TestExtractMetadata(t *testing.T) {
 			foundMap[item.Key] = true
 		}
 
+		t.Log(items)
+
 		for _, expectedKey := range expectedKeys {
 			if !foundMap[expectedKey] {
 				t.Errorf("expected to find metadata key %s, but didn't", expectedKey)

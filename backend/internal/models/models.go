@@ -6,8 +6,8 @@ import (
 
 type Image struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	Path      string    `gorm:"type:varchar(1024);uniqueIndex" json:"path"`
-	Prompt    string    `gorm:"type:text" json:"prompt"`
+	Path      string    `gorm:"type:varchar(4096);uniqueIndex:path_name_uniq" json:"path"`
+	Name      string    `gorm:"type:varchar(1024);uniqueIndex:path_name_uniq" json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 
 	MetadataItems []ImageMetadata `gorm:"foreignKey:ImageID;constraint:OnDelete:CASCADE" json:"metadata_items"`

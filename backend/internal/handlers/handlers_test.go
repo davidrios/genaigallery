@@ -87,13 +87,13 @@ func TestBrowseCore(t *testing.T) {
 	}
 
 	t.Run("Browse Root Directory", func(t *testing.T) {
-		res, err := BrowseCore("", "", "asc", 1, 50)
+		res, err := BrowseCore("", "", false, "asc", 1, 50)
 		if err != nil {
 			t.Fatalf("BrowseCore failed: %v", err)
 		}
 
-		if res.Total == 0 {
-			t.Errorf("Expected > 0 images in root, got 0")
+		if res.Total != 4 {
+			t.Errorf("Expected 4 images in root, got %v", res.Total)
 		}
 
 		// Root should see the 'video' directory based on our fixtures map
@@ -110,48 +110,115 @@ func TestBrowseCore(t *testing.T) {
 		}
 	})
 
+	t.Run("Browse Root Directory paginated", func(t *testing.T) {
+		res, err := BrowseCore("", "", false, "asc", 1, 3)
+		if err != nil {
+			t.Fatalf("BrowseCore failed: %v", err)
+		}
+
+		if res.Total != 4 {
+			t.Errorf("Expected 4 images in root, got %v", res.Total)
+		}
+
+		if res.Pages != 2 {
+			t.Errorf("Expected 2 pages in root, got %v", res.Total)
+		}
+
+		if len(res.Images) != 3 {
+			t.Errorf("Expected 3 images in page 1, got %v", res.Total)
+		}
+
+		// Root should see the 'video' directory based on our fixtures map
+		hasVideoDir := false
+		for _, dir := range res.Directories {
+			if dir.Name == "video" {
+				hasVideoDir = true
+				break
+			}
+		}
+
+		if !hasVideoDir {
+			t.Errorf("Expected to see 'video' directory in browse results")
+		}
+
+		res, err = BrowseCore("", "", false, "asc", 2, 3)
+		if err != nil {
+			t.Fatalf("BrowseCore failed: %v", err)
+		}
+
+		if len(res.Images) != 1 {
+			t.Errorf("Expected 1 images in page 2, got %v", res.Total)
+		}
+	})
+
 	t.Run("Browse Subdirectory", func(t *testing.T) {
-		res, err := BrowseCore("video", "", "asc", 1, 50)
+		res, err := BrowseCore("video", "", false, "asc", 1, 50)
 		if err != nil {
 			t.Fatalf("BrowseCore failed for 'video' subdir: %v", err)
 		}
 
-		if len(res.Images) == 0 {
-			t.Errorf("Expected images within 'video' directory")
+		if len(res.Images) != 1 {
+			t.Errorf("Expected 1 media file within 'video' directory")
 		}
 
-		for _, img := range res.Images {
-			if filepath.Dir(img.Path) != "video" {
-				t.Errorf("Image path %s not matched to 'video' dir", img.Path)
-			}
+		img := res.Images[0]
+
+		if img.Path != "video" {
+			t.Errorf("Image path %s not matched to 'video' dir", img.Path)
 		}
 	})
 
 	t.Run("Browse FTS Query", func(t *testing.T) {
-		// Searching for an expected metadata prompt fragment.
-		// Usually ComfyUI or SD images have specific strings
-		res, err := BrowseCore("", "subway", "asc", 1, 50)
-		if err != nil {
-			t.Fatalf("BrowseCore FTS query failed: %v", err)
+		tests := []struct {
+			query    string
+			expected int
+		}{
+			{"hidre", 1},
+			{"wan2.2", 1},
+			{"qwen", 3},
+			{"lora_name:qwen", 2},
+			{"qwen fp8", 2},
+			{"hidream OR wan2.2", 2},
 		}
 
-		if res.Total == 0 {
-			// This might legitimately fail if 'subway' is not in the extracted prompts,
-			// but we know from the user's snippet that 'subway' is in the positive prompt of ComfyUI_00001_.mp4
-			// However `handlers_test.db` doesn't yet have `dhowden/tag` configured. Just ensure it executes without error.
-			t.Log("No images found for search 'subway'. If extraction isn't active, this is expected.")
-		}
-	})
+		for _, tt := range tests {
+			t.Run(tt.query, func(t *testing.T) {
+				res, err := BrowseCore("", tt.query, false, "asc", 1, 50)
+				if err != nil {
+					t.Fatalf("BrowseCore FTS query failed: %v", err)
+				}
 
-	t.Run("Pagination Limits", func(t *testing.T) {
-		res, err := BrowseCore("", "", "asc", 1, 2) // Limit to 2
-		if err != nil {
-			t.Fatalf("Pagination check failed: %v", err)
+				if res.Total != int64(tt.expected) {
+					t.Fatalf("Expected %v results, got %v", tt.expected, res.Total)
+				}
+			})
 		}
 
-		if len(res.Images) > 2 {
-			t.Errorf("Expected 2 images, got %d", len(res.Images))
-		}
+		t.Run("In path 1", func(t *testing.T) {
+			res, err := BrowseCore("", "wan2.2", true, "asc", 1, 50)
+			if err != nil {
+				t.Fatalf("BrowseCore FTS query failed: %v", err)
+			}
+
+			if res.Total != 0 {
+				t.Fatalf("Expected 0 results, got %v", res.Total)
+			}
+		})
+
+		t.Run("In path 2", func(t *testing.T) {
+			res, err := BrowseCore("video", "qwen OR wan2.2", true, "asc", 1, 50)
+			if err != nil {
+				t.Fatalf("BrowseCore FTS query failed: %v", err)
+			}
+
+			if res.Total != 1 {
+				t.Fatalf("Expected 1 result, got %v", res.Total)
+			}
+
+			if res.Images[0].Name != "ComfyUI_00001_.mp4" {
+				t.Fatalf("Expected %v result, got %v", "ComfyUI_00001_.mp4", res.Images[0].Name)
+			}
+		})
 	})
 }
 
@@ -201,7 +268,7 @@ func TestUploadCore(t *testing.T) {
 
 		defer func() {
 			for _, image := range images {
-				imagePath := filepath.Join(config.ImagesDir, image.Path)
+				imagePath := filepath.Join(config.ImagesDir, image.Name)
 				os.Remove(imagePath)
 			}
 		}()
@@ -216,7 +283,7 @@ func TestUploadCore(t *testing.T) {
 			t.Errorf("Expected image count to increase after upload, went from %d to %d", initialCount, newCount)
 		}
 
-		imagePath := filepath.Join(config.ImagesDir, images[0].Path)
+		imagePath := filepath.Join(config.ImagesDir, images[0].Name)
 
 		content, err := os.ReadFile(imagePath)
 		if err != nil {
@@ -239,7 +306,7 @@ func TestUploadCore(t *testing.T) {
 
 		defer func() {
 			for _, image := range images {
-				imagePath := filepath.Join(config.ImagesDir, image.Path)
+				imagePath := filepath.Join(config.ImagesDir, filepath.FromSlash(image.Path), image.Name)
 				os.Remove(imagePath)
 			}
 		}()
@@ -254,8 +321,8 @@ func TestUploadCore(t *testing.T) {
 			t.Errorf("Expected image count to increase after upload, went from %d to %d", initialCount, newCount)
 		}
 
-		imagePath := filepath.Join(config.ImagesDir, images[0].Path)
-		expectedPath := filepath.Join(config.ImagesDir, "a", "sub", "dir", filepath.Base(images[0].Path))
+		imagePath := filepath.Join(config.ImagesDir, filepath.FromSlash(images[0].Path), images[0].Name)
+		expectedPath := filepath.Join(config.ImagesDir, "a", "sub", "dir", images[0].Name)
 		if expectedPath != imagePath {
 			t.Fatalf("Saved path %v different than expected %v", imagePath, expectedPath)
 		}
