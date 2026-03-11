@@ -44,6 +44,9 @@ func GetImage(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Image not found"})
 		return
 	}
+
+	image.Path = image.Path + "/" + image.Name
+
 	c.JSON(http.StatusOK, image)
 }
 
@@ -118,33 +121,20 @@ func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page,
 
 	query := db.Model(&models.Image{})
 
-	if q != "" && (inPath || pathParam == "") {
-		baseSearchQuery := "JOIN (select image_id, min(rank) rank from search_index where _WHERE_ group by image_id order by rank) t1 on t1.image_id = images.id"
-
-		if strings.Contains(q, ":") {
-			parts := strings.SplitN(q, ":", 2)
-			key, q := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
-			q = toFTSQuery(q)
-			query = query.Joins(strings.Replace(baseSearchQuery, "_WHERE_", "content match ? and prefix = ?", 1), q, key)
-		} else {
-			q = toFTSQuery(q)
-			log.Println("q", q)
-			query = query.Joins(strings.Replace(baseSearchQuery, "_WHERE_", "content match ?", 1), q)
-		}
-	}
-
-	if q == "" || inPath {
-		query = query.Where("path = ?", pathParam)
-	}
-
 	if sortOrder != "asc" {
 		sortOrder = "desc"
 	}
 
-	if q == "" {
-		query = query.Order("created_at " + sortOrder)
+	if q != "" {
+		q = toFTSQuery(q)
+		query = query.Joins("JOIN (select image_id, min(rank) rank from search_index where content match ? group by image_id order by rank) t1 on t1.image_id = images.id", q)
+		query = query.Order("t1.rank asc, created_at " + sortOrder)
 	} else {
-		query = query.Order("rank asc, created_at " + sortOrder)
+		query = query.Order("created_at " + sortOrder)
+	}
+
+	if q == "" || inPath {
+		query = query.Where("path = ?", pathParam)
 	}
 
 	var total int64
@@ -191,6 +181,10 @@ func Browse(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		}
 		return
+	}
+
+	for idx, image := range result.Images {
+		result.Images[idx].Path = image.Path + "/" + image.Name
 	}
 
 	c.JSON(http.StatusOK, result)

@@ -201,35 +201,22 @@ func TestUpdateFTS(t *testing.T) {
 	// Verify the database state using Raw SQL
 	type SearchRow struct {
 		ImageID uint   `gorm:"column:image_id"`
-		Prefix  string `gorm:"column:prefix"`
 		Content string `gorm:"column:content"`
 	}
 
 	var rows []SearchRow
-	err := db.Raw("SELECT image_id, prefix, content FROM search_index WHERE image_id = ?", img.ID).Scan(&rows).Error
+	err := db.Raw("SELECT image_id, content FROM search_index WHERE image_id = ?", img.ID).Scan(&rows).Error
 	if err != nil {
 		t.Fatalf("Failed to query search_index: %v", err)
 	}
 
-	// We expect 3 rows in search_index:
-	// 1. The main image row (prefix='')
-	// 2. The 'meta' prefixed grouped row
-	// 3. The 'other' prefixed row
-	if len(rows) != 3 {
-		t.Fatalf("Expected 3 rows in search_index, got %d", len(rows))
+	if len(rows) != 1 {
+		t.Fatalf("Expected 1 row in search_index, got %d", len(rows))
 	}
 
-	foundMeta := false
-	for _, row := range rows {
-		if row.Prefix == "meta" {
-			foundMeta = true
-			if !strings.Contains(row.Content, "apple") || !strings.Contains(row.Content, "banana") || !strings.Contains(row.Content, "cherry") {
-				t.Errorf("Prefix 'meta' content did not group correctly: %s", row.Content)
-			}
-		}
-	}
+	row := rows[0]
 
-	if !foundMeta {
-		t.Errorf("Did not find the grouped 'meta' prefix in search_index")
+	if !strings.Contains(row.Content, "apple") || !strings.Contains(row.Content, "banana") || !strings.Contains(row.Content, "cherry") {
+		t.Errorf("Content contains unexpected data: %s", row.Content)
 	}
 }

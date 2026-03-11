@@ -26,7 +26,7 @@ func InitDB(dbPath string) {
 
 	// Create FTS5 table
 	// Note: We use image_id as UNINDEXED column to reference the Image.ID (Integer)
-	err = DB.Exec("CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(image_id UNINDEXED, prefix UNINDEXED, content, tokenize=\"trigram\")").Error
+	err = DB.Exec("CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(image_id UNINDEXED, content, tokenize=\"trigram\")").Error
 	if err != nil {
 		log.Fatal("failed to create fts table:", err)
 	}

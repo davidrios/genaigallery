@@ -179,6 +179,7 @@ func TestBrowseCore(t *testing.T) {
 			{"lora_name:qwen", 2},
 			{"qwen fp8", 2},
 			{"hidream OR wan2.2", 2},
+			{"qwen alien", 2},
 		}
 
 		for _, tt := range tests {
@@ -193,6 +194,17 @@ func TestBrowseCore(t *testing.T) {
 				}
 			})
 		}
+
+		t.Run("Search while in path with inPath false", func(t *testing.T) {
+			res, err := BrowseCore("video", "qwen", false, "asc", 1, 50)
+			if err != nil {
+				t.Fatalf("BrowseCore FTS query failed: %v", err)
+			}
+
+			if res.Total != 3 {
+				t.Fatalf("Expected 3 results, got %v", res.Total)
+			}
+		})
 
 		t.Run("In path 1", func(t *testing.T) {
 			res, err := BrowseCore("", "wan2.2", true, "asc", 1, 50)

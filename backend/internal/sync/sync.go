@@ -151,11 +151,9 @@ func extractAndSaveMetadata(db *gorm.DB, img *models.Image, fullPath string) {
 func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata) {
 	db.Exec("DELETE FROM search_index WHERE image_id = ?", img.ID)
 
-	fullContent := img.Path + " " + img.Name + " " + img.CreatedAt.String()
-	db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, '', ?)", img.ID, fullContent)
-	if metaData != nil && len(*metaData) > 0 {
-		grouped := make(map[string]string)
+	fullContent := []string{img.Path, img.Name, img.CreatedAt.String()}
 
+	if metaData != nil && len(*metaData) > 0 {
 		for i := range *metaData {
 			metaItem := &(*metaData)[i]
 
@@ -165,17 +163,11 @@ func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata)
 				prefix = prefix[:len(prefix)-1]
 			}
 
-			if existing, ok := grouped[prefix]; ok {
-				grouped[prefix] = existing + " " + metaItem.Value
-			} else {
-				grouped[prefix] = metaItem.Value
-			}
-		}
-
-		for prefix, content := range grouped {
-			db.Exec("INSERT INTO search_index (image_id, prefix, content) VALUES (?, ?, ?)", img.ID, prefix, content)
+			fullContent = append(fullContent, prefix+":"+metaItem.Value)
 		}
 	}
+
+	db.Exec("INSERT INTO search_index (image_id, content) VALUES (?, ?)", img.ID, strings.Join(fullContent, " "))
 }
 
 func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(string, time.Time)) error {
