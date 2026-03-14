@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Image } from '@/types'
-import { api } from '@/services/api'
+import { isVideo } from '@/lib/utils'
 
 const props = defineProps<{
   selectedImage: Image | null
@@ -14,11 +14,6 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'navigate', dir: 'next' | 'prev'): void
 }>()
-
-const isVideo = (path: string) => {
-  const ext = path.split('.').pop()?.toLowerCase()
-  return ['mp4', 'webm', 'mov'].includes(ext || '')
-}
 
 const sortedMetadata = computed(() => {
   if (!props.selectedImage?.metadata_items) return []
@@ -111,14 +106,14 @@ const sortedMetadata = computed(() => {
 
         <video
           v-if="isVideo(selectedImage.path)"
-          :src="api.getImageUrl(selectedImage.path)"
+          :src="selectedImage.path"
           controls
           autoplay
           class="max-h-full max-w-full object-contain"
         ></video>
         <img
           v-else
-          :src="api.getImageUrl(selectedImage.path)"
+          :src="selectedImage.path"
           :alt="selectedImage.path"
           class="max-h-full max-w-full object-contain"
         />

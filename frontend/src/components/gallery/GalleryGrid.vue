@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isVideo } from '@/lib/utils'
 import type { Directory, Image } from '@/types'
 
 defineProps<{
@@ -11,11 +12,6 @@ const emit = defineEmits<{
   (e: 'navigate', path: string): void
   (e: 'selectImage', image: Image): void
 }>()
-
-const isVideo = (path: string) => {
-  const ext = path.split('.').pop()?.toLowerCase()
-  return ['mp4', 'webm', 'mov'].includes(ext || '')
-}
 </script>
 
 <template>

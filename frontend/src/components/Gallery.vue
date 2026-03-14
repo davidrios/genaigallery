@@ -2,7 +2,6 @@
 import { onMounted, ref } from 'vue'
 import { useGalleryData } from '@/composables/useGalleryData'
 import { useGalleryNavigation } from '@/composables/useGalleryNavigation'
-import { useInfiniteScrollLogic } from '@/composables/useInfiniteScrollLogic'
 import { useMediaOverlay } from '@/composables/useMediaOverlay'
 
 import GalleryHeader from './gallery/GalleryHeader.vue'
@@ -10,12 +9,10 @@ import GalleryGrid from './gallery/GalleryGrid.vue'
 import MediaOverlay from './gallery/MediaOverlay.vue'
 
 const {
-  pages,
   directories,
   images,
   loading,
   error,
-  totalPages,
   firstLoadedPage,
   lastLoadedPage,
   loadPageContent,
@@ -65,7 +62,6 @@ const {
   sortOrder,
   searchQuery,
   breadcrumbs,
-  updateRoutePage,
   navigateTo,
   toggleSort,
   performSearch,
@@ -100,9 +96,7 @@ onMounted(() => {
 
     <GalleryGrid
       :directories="directories"
-      :pages="pages"
-      :loading="loading"
-      :totalPages="totalPages"
+      :images="images"
       :error="error"
       @navigate="navigateTo"
       @selectImage="openImage"

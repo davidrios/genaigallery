@@ -17,7 +17,7 @@ type Story = StoryObj<typeof meta>
 
 const sampleImageWithMetadata = {
   id: '1',
-  path: 'sample-images/ai_generated_art_1.png',
+  path: `https://picsum.photos/seed/seed1/1024/768`,
   created_at: new Date().toISOString(),
   metadata_items: [
     { key: 'prompt', value: 'a cyberpunk city street, neon lights, rainy, 8k, masterpiece' },
@@ -40,14 +40,35 @@ export const Default: Story = {
 export const LoadingDetails: Story = {
   args: {
     ...Default.args,
-    selectedImage: { ...sampleImageWithMetadata, metadata_items: undefined },
+    selectedImage: {
+      ...sampleImageWithMetadata,
+      metadata_items: undefined,
+      path: `https://picsum.photos/seed/seed2/768/1024`,
+    },
     isLoadingDetails: true,
+    hasPrevious: false,
   },
 }
 
 export const NoMetadata: Story = {
   args: {
     ...Default.args,
-    selectedImage: { ...sampleImageWithMetadata, metadata_items: [] },
+    selectedImage: {
+      ...sampleImageWithMetadata,
+      metadata_items: [],
+      path: `https://picsum.photos/seed/seed3/768/768`,
+    },
+    hasNext: false,
+  },
+}
+
+export const WithVideo: Story = {
+  args: {
+    ...Default.args,
+    selectedImage: {
+      ...sampleImageWithMetadata,
+      metadata_items: undefined,
+      path: `https://github.com/davidrios/genaigallery/raw/refs/heads/main/backend/testdata/fixtures/video/ComfyUI_00001_.mp4`,
+    },
   },
 }
