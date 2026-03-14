@@ -11,6 +11,8 @@ var (
 	Port      string
 )
 
+const StaticImagesRoot = "/images"
+
 func InitConfig() {
 	ImagesDir = os.Getenv("IMAGES_DIR")
 	if ImagesDir == "" {

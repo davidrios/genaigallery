@@ -24,15 +24,13 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	r.Static("/images", config.ImagesDir)
+	r.Static(config.StaticImagesRoot, config.ImagesDir)
 	// r.Static("/assets", ...) // Frontend assets if needed
 
 	api := r.Group("/api")
 	{
-		// api.GET("/images", handlers.ListImages)
 		api.GET("/image/:id", handlers.GetImage)
 		api.GET("/browse", handlers.Browse)
-		// api.GET("/search", handlers.ListImages) // Search is basically List with q
 		api.POST("/upload", handlers.Upload)
 	}
 

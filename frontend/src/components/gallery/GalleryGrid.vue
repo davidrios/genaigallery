@@ -93,7 +93,7 @@ const emit = defineEmits<{
                   @click.stop="emit('selectImage', image)"
                 >
                   <h3 class="truncate text-sm text-gray-500 dark:text-gray-400">
-                    {{ image.path.split('/').pop() }}
+                    {{ image.name }}
                   </h3>
                   <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
                     {{ new Date(image.created_at).toLocaleDateString() }}

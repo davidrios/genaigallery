@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { api } from '@/services/api'
+// import { api } from '@/services/api'
 import type { Image } from '@/types'
 
 export function useMediaOverlay(images: { value: Image[] }) {

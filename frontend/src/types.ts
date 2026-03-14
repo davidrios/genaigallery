@@ -1,13 +1,14 @@
 export interface Image {
   id: string
   path: string
+  name: string
   created_at: string
   metadata_items?: { key: string; value: string }[]
 }
 
 export interface Directory {
-  name: string
   path: string
+  name: string
 }
 
 export interface BrowseResponse {

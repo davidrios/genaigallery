@@ -1,72 +1,22 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed } from 'vue'
+import { refDebounced } from '@vueuse/core'
+
 import { useGalleryData } from '@/composables/useGalleryData'
 import { useGalleryNavigation } from '@/composables/useGalleryNavigation'
 import { useMediaOverlay } from '@/composables/useMediaOverlay'
-
 import GalleryHeader from './gallery/GalleryHeader.vue'
 import GalleryGrid from './gallery/GalleryGrid.vue'
 import MediaOverlay from './gallery/MediaOverlay.vue'
 
-const {
-  directories,
-  images,
-  loading,
-  error,
-  firstLoadedPage,
-  lastLoadedPage,
-  loadPageContent,
-  resetData,
-  addPageChunk,
-} = useGalleryData()
+const { searchParams, breadcrumbs, navigateTo, toggleSort, performSearch, navigateToPage } =
+  useGalleryNavigation()
 
-const isUrlSyncing = ref(false)
+const { isFetching, error, data } = useGalleryData(searchParams)
 
-const initGallery = async () => {
-  loading.value = true
-  resetData()
-
-  // Get params from route via composable helper or direct access if easier,
-  // but better to keep it decoupled.
-  // Actually `useGalleryNavigation` has access to `route` so we can read from it inside `loadPageContent` calls
-  // OR we just read values here.
-  const targetPage = parseInt(route.query.page as string) || 1
-  const path = currentPath.value
-  const sort = sortOrder.value
-  const q = searchQuery.value
-
-  const result = await loadPageContent(path, sort, q, targetPage)
-
-  if (result) {
-    addPageChunk(
-      { pageNum: targetPage, images: result.images },
-      'push', // first chunk is effectively a push
-      result.directories,
-      result.totalPages,
-    )
-    firstLoadedPage.value = targetPage
-    lastLoadedPage.value = targetPage
-
-    // Handle Deep Link
-    const viewPath = route.query.view as string
-    if (viewPath) {
-      const img = result.images.find((i) => i.path === viewPath)
-      if (img) openImage(img, false)
-    }
-  }
-  loading.value = false
-}
-
-const {
-  currentPath,
-  sortOrder,
-  searchQuery,
-  breadcrumbs,
-  navigateTo,
-  toggleSort,
-  performSearch,
-  route,
-} = useGalleryNavigation(initGallery, isUrlSyncing)
+const directories = computed(() => data.value?.directories || [])
+const images = computed(() => data.value?.images || [])
+const isLoading = refDebounced(isFetching, 500)
 
 const {
   selectedImage,
@@ -77,30 +27,32 @@ const {
   closeOverlay,
   navigateImage,
 } = useMediaOverlay(images)
-
-onMounted(() => {
-  initGallery()
-})
 </script>
 
 <template>
   <div class="container mx-auto min-h-screen p-4">
     <GalleryHeader
       :breadcrumbs="breadcrumbs"
-      v-model:searchQuery="searchQuery"
-      :sortOrder="sortOrder"
+      v-model:searchQuery="searchParams.q"
+      :sortOrder="searchParams.sort"
       @navigate="navigateTo"
       @search="performSearch"
       @toggleSort="toggleSort"
     />
 
-    <GalleryGrid
-      :directories="directories"
-      :images="images"
-      :error="error"
-      @navigate="navigateTo"
-      @selectImage="openImage"
-    />
+    <div class="flex h-20 items-center justify-center" v-if="isLoading">
+      <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600"></div>
+    </div>
+    <template v-else>
+      <GalleryGrid
+        :directories="directories"
+        :images="images"
+        :error="error"
+        @navigate="navigateTo"
+        @selectImage="openImage"
+      />
+      <!-- Paginator here -->
+    </template>
 
     <MediaOverlay
       :selectedImage="selectedImage"

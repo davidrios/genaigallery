@@ -45,7 +45,7 @@ func GetImage(c *gin.Context) {
 		return
 	}
 
-	image.Path = image.Path + "/" + image.Name
+	image.Path = config.StaticImagesRoot + "/" + image.Path + "/" + image.Name
 
 	c.JSON(http.StatusOK, image)
 }
@@ -184,7 +184,7 @@ func Browse(c *gin.Context) {
 	}
 
 	for idx, image := range result.Images {
-		result.Images[idx].Path = image.Path + "/" + image.Name
+		result.Images[idx].Path = config.StaticImagesRoot + "/" + image.Path + "/" + image.Name
 	}
 
 	c.JSON(http.StatusOK, result)
