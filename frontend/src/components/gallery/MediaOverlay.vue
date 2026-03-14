@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { Image } from '@/types'
 import { isVideo } from '@/lib/utils'
+import { X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps<{
   selectedImage: Image | null
@@ -37,23 +38,10 @@ const sortedMetadata = computed(() => {
   >
     <!-- Close Button -->
     <button
-      @click="emit('close')"
       class="absolute top-4 right-4 z-50 p-2 text-white hover:text-gray-300"
+      @click="emit('close')"
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="32"
-        height="32"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
+      <X class="h-8 w-8" />
     </button>
 
     <div class="mx-auto flex h-full w-full max-w-7xl gap-6 p-4" @click.stop>
@@ -65,43 +53,19 @@ const sortedMetadata = computed(() => {
         <button
           v-if="hasPrevious"
           class="absolute top-1/2 left-4 z-10 -translate-y-1/2 rounded-full bg-black/40 p-3 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/media:opacity-100 hover:bg-black/70"
-          @click.stop="emit('navigate', 'prev')"
           title="Previous (Left Arrow)"
+          @click.stop="emit('navigate', 'prev')"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="m15 18-6-6 6-6" />
-          </svg>
+          <ChevronLeft class="h-6 w-6" />
         </button>
 
         <button
           v-if="hasNext"
           class="absolute top-1/2 right-4 z-10 -translate-y-1/2 rounded-full bg-black/40 p-3 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover/media:opacity-100 hover:bg-black/70"
-          @click.stop="emit('navigate', 'next')"
           title="Next (Right Arrow)"
+          @click.stop="emit('navigate', 'next')"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="m9 18 6-6-6-6" />
-          </svg>
+          <ChevronRight class="h-6 w-6" />
         </button>
 
         <video

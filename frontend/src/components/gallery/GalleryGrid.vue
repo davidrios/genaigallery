@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Folder } from 'lucide-vue-next'
+
 import { isVideo } from '@/lib/utils'
 import type { Directory, Image } from '@/types'
 
@@ -34,25 +36,13 @@ const emit = defineEmits<{
         <div
           v-for="dir in directories"
           :key="dir.path"
-          @click="emit('navigate', dir.path)"
           class="group flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-gray-50 p-4 transition-all duration-200 hover:border-indigo-400 hover:bg-indigo-50 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-indigo-500 dark:hover:bg-indigo-900/20"
+          @click="emit('navigate', dir.path)"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="text-indigo-400 transition-transform group-hover:scale-110 dark:text-indigo-300"
-          >
-            <path
-              d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2Z"
-            ></path>
-          </svg>
+          <Folder
+            class="h-12 w-12 text-indigo-400 transition-transform group-hover:scale-110 dark:text-indigo-300"
+            :stroke-width="1.5"
+          />
           <span
             class="mt-2 w-full truncate text-center text-sm font-medium text-gray-700 dark:text-gray-200"
             >{{ dir.name }}</span

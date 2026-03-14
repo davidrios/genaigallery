@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue3'
+import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import GalleryGrid from './GalleryGrid.vue'
 const meta = {
   title: 'Gallery/GalleryGrid',

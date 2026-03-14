@@ -66,10 +66,10 @@ const changePage = (page: number | string) => {
     aria-label="Pagination"
   >
     <button
-      @click="changePage(currentPage - 1)"
       :disabled="currentPage === 1"
       class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
       aria-label="Go to previous page"
+      @click="changePage(currentPage - 1)"
     >
       <ChevronLeft class="h-4 w-4" />
     </button>
@@ -78,7 +78,6 @@ const changePage = (page: number | string) => {
       <template v-for="(page, index) in visiblePages" :key="index">
         <button
           v-if="typeof page === 'number'"
-          @click="changePage(page)"
           :class="[
             'inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-md border text-sm font-medium transition-colors focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:outline-none',
             page === currentPage
@@ -86,6 +85,7 @@ const changePage = (page: number | string) => {
               : 'border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-800 dark:hover:text-zinc-50',
           ]"
           :aria-current="page === currentPage ? 'page' : undefined"
+          @click="changePage(page)"
         >
           {{ page }}
         </button>
@@ -96,10 +96,10 @@ const changePage = (page: number | string) => {
     </div>
 
     <button
-      @click="changePage(currentPage + 1)"
       :disabled="currentPage === totalPages"
       class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
       aria-label="Go to next page"
+      @click="changePage(currentPage + 1)"
     >
       <ChevronRight class="h-4 w-4" />
     </button>

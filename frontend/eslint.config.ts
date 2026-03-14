@@ -17,7 +17,7 @@ export default defineConfigWithVueTs(
     files: ['**/*.{ts,mts,tsx,vue}'],
   },
 
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', '**/node_modules/**']),
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', '**/node_modules/**', 'src/components/ui/**']),
   globalIgnores(['!.storybook'], 'Include Storybook Directory'),
 
   pluginVue.configs['flat/recommended'],

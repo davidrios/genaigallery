@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue3'
+import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import GalleryPaginator from './GalleryPaginator.vue'
 import { ref } from 'vue'
 

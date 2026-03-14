@@ -38,15 +38,15 @@ const handlePageChange = (page: number | string) => {
 <template>
   <div class="container mx-auto min-h-screen p-4">
     <GalleryHeader
+      v-model:search-query="searchParams.q"
       :breadcrumbs="breadcrumbs"
-      v-model:searchQuery="searchParams.q"
-      :sortOrder="searchParams.sort"
+      :sort-order="searchParams.sort"
       @navigate="navigateTo"
       @search="performSearch"
-      @toggleSort="toggleSort"
+      @toggle-sort="toggleSort"
     />
 
-    <div class="flex h-20 items-center justify-center" v-if="isLoading">
+    <div v-if="isLoading" class="flex h-20 items-center justify-center">
       <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600"></div>
     </div>
     <template v-else>
@@ -55,23 +55,23 @@ const handlePageChange = (page: number | string) => {
         :images="images"
         :error="error"
         @navigate="navigateTo"
-        @selectImage="openImage"
+        @select-image="openImage"
       />
 
       <div v-if="data?.pages && data.pages > 1" class="mt-8">
         <GalleryPaginator
-          :currentPage="data.page"
-          :totalPages="data.pages"
-          @update:currentPage="handlePageChange"
+          :current-page="data.page"
+          :total-pages="data.pages"
+          @update:current-page="handlePageChange"
         />
       </div>
     </template>
 
     <MediaOverlay
-      :selectedImage="selectedImage"
-      :isLoadingDetails="isLoadingDetails"
-      :hasPrevious="hasPrevious"
-      :hasNext="hasNext"
+      :selected-image="selectedImage"
+      :is-loading-details="isLoadingDetails"
+      :has-previous="hasPrevious"
+      :has-next="hasNext"
       @close="closeOverlay"
       @navigate="navigateImage"
     />
