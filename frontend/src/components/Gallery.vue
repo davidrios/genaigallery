@@ -7,6 +7,7 @@ import { useGalleryNavigation } from '@/composables/useGalleryNavigation'
 import { useMediaOverlay } from '@/composables/useMediaOverlay'
 import GalleryHeader from './gallery/GalleryHeader.vue'
 import GalleryGrid from './gallery/GalleryGrid.vue'
+import GalleryPaginator from './gallery/GalleryPaginator.vue'
 import MediaOverlay from './gallery/MediaOverlay.vue'
 
 const { searchParams, breadcrumbs, navigateTo, toggleSort, performSearch, navigateToPage } =
@@ -27,6 +28,11 @@ const {
   closeOverlay,
   navigateImage,
 } = useMediaOverlay(images)
+
+const handlePageChange = (page: number | string) => {
+  navigateToPage(page.toString())
+  window.scrollTo({ top: 0, behavior: 'instant' })
+}
 </script>
 
 <template>
@@ -51,7 +57,14 @@ const {
         @navigate="navigateTo"
         @selectImage="openImage"
       />
-      <!-- Paginator here -->
+
+      <div v-if="data?.pages && data.pages > 1" class="mt-8">
+        <GalleryPaginator
+          :currentPage="data.page"
+          :totalPages="data.pages"
+          @update:currentPage="handlePageChange"
+        />
+      </div>
     </template>
 
     <MediaOverlay

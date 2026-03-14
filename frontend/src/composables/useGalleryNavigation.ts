@@ -40,6 +40,7 @@ export function useGalleryNavigation() {
 
   const performSearch = useDebounceFn((queryVal: string) => {
     searchParams.q = queryVal
+    searchParams.page = '1'
   }, 500)
 
   return {
