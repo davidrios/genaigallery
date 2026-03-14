@@ -181,7 +181,7 @@ func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(str
 		}
 
 		ext := strings.ToLower(filepath.Ext(d.Name()))
-		if !(ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".mp4" || ext == ".mov" || ext == ".mkv" || ext == ".webm") {
+		if !(ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".mp4" || ext == ".mov" || ext == ".webm") {
 			return nil
 		}
 

@@ -34,7 +34,7 @@ func TestFindModifiedMedia(t *testing.T) {
 
 	for _, file := range discoveredFiles {
 		ext := strings.ToLower(filepath.Ext(file))
-		if ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".webp" && ext != ".mp4" && ext != ".mkv" && ext != ".mov" && ext != ".webm" {
+		if ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".webp" && ext != ".mp4" && ext != ".mov" && ext != ".webm" {
 			t.Errorf("Found unexpected file type: %s", file)
 		}
 	}
