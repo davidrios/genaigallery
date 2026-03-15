@@ -26,7 +26,5 @@ func InitConfig() {
 	}
 
 	Port = os.Getenv("PORT")
-	if Port == "" {
-		Port = "5775"
-	}
+	// If Port is empty, we will handle finding a free port in main.go
 }
