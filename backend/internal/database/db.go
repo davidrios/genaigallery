@@ -14,7 +14,7 @@ var DB *gorm.DB
 
 func InitDB(dbPath string) {
 	var err error
-	DB, err = gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_busy_timeout=5000"), &gorm.Config{
+	DB, err = gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_busy_timeout=30000"), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info).LogMode(logger.Warn).LogMode(logger.Error),
 	})
 	if err != nil {
@@ -29,7 +29,7 @@ func InitDB(dbPath string) {
 			IgnoreRecordNotFoundError: true,
 		},
 	)
-	DB, err = gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_busy_timeout=5000"), &gorm.Config{
+	DB, err = gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_busy_timeout=30000"), &gorm.Config{
 		Logger: newLogger,
 	})
 	if err != nil {
