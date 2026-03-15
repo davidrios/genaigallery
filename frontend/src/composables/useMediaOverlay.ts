@@ -27,6 +27,8 @@ export function useMediaOverlay(images: Ref<Image[]>) {
     (newUrl) => {
       if (newUrl) {
         execute()
+      } else {
+        selectedImage.value = null
       }
     },
     { immediate: true },

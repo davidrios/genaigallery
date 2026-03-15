@@ -35,7 +35,7 @@ export function useGalleryNavigation() {
   }
 
   const toggleSort = () => {
-    searchParams.sort = searchParams.sort === 'desc' ? 'asc' : 'desc'
+    searchParams.sort = (!searchParams.sort || searchParams.sort === 'desc') ? 'asc' : 'desc'
   }
 
   const performSearch = useDebounceFn((queryVal: string) => {

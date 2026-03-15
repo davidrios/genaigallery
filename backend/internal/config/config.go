@@ -27,6 +27,6 @@ func InitConfig() {
 
 	Port = os.Getenv("PORT")
 	if Port == "" {
-		Port = "8000"
+		Port = "5775"
 	}
 }
