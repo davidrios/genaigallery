@@ -133,7 +133,7 @@ const sortedMetadata = computed(() => {
               <div v-for="item in sortedMetadata" class="group">
                 <dt class="mb-1 text-xs font-medium break-all text-indigo-400">{{ item.key }}</dt>
                 <dd
-                  class="rounded border border-transparent bg-gray-800/50 p-2 font-mono text-sm break-words text-gray-300 transition-colors group-hover:border-gray-700"
+                  class="rounded border border-transparent bg-gray-800/50 p-2 font-mono text-sm break-words text-gray-300 transition-colors"
                 >
                   <ul v-if="item.values && item.values.length > 1" class="list-inside list-disc">
                     <li v-for="(val, idx) in item.values" :key="idx">{{ val }}</li>
