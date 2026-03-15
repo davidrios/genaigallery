@@ -220,3 +220,35 @@ func TestUpdateFTS(t *testing.T) {
 		t.Errorf("Content contains unexpected data: %s", row.Content)
 	}
 }
+
+func TestWindowsPathNormalization(t *testing.T) {
+	db := setupTestDB(t)
+
+	originalImagesDir := config.ImagesDir
+	defer func() {
+		config.ImagesDir = originalImagesDir
+	}()
+
+	// Simulate a base Windows images directory
+	config.ImagesDir = `C:\Images`
+
+	// This simulates a file found by fastwalk inside the base directory on Windows
+	simulatedWindowsPath := `C:\Images\outputs\ComfyUI_0001.png`
+
+	// Call AddImage
+	img, err := AddImage(db, simulatedWindowsPath, time.Now(), false)
+	if err != nil {
+		t.Fatalf("Failed to add simulated Windows image: %v", err)
+	}
+
+	// Verify the database normalized the backward slashes to forward slashes.
+	// We want "outputs" and strictly not "outputs\" or any path containing "\"
+	if strings.Contains(img.Path, `\`) {
+		t.Errorf("Expected path to be normalized with forward slashes, but got backslashes: %s", img.Path)
+	}
+
+	expectedPath := "outputs"
+	if img.Path != expectedPath {
+		t.Errorf("Expected path to be %q, but got %q", expectedPath, img.Path)
+	}
+}
