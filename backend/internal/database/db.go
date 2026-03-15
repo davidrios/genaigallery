@@ -5,6 +5,7 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"genai-gallery-backend/internal/models"
 )
@@ -13,7 +14,24 @@ var DB *gorm.DB
 
 func InitDB(dbPath string) {
 	var err error
-	DB, err = gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_busy_timeout=5000"), &gorm.Config{})
+	DB, err = gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_busy_timeout=5000"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info).LogMode(logger.Warn).LogMode(logger.Error),
+	})
+	if err != nil {
+		log.Fatal("failed to connect database:", err)
+	}
+
+	// Reconfigure logger specifically to ignore 'record not found'
+	DB.Logger = logger.Default.LogMode(logger.Warn)
+	newLogger := logger.New(
+		log.New(log.Writer(), "\r\n", log.LstdFlags),
+		logger.Config{
+			IgnoreRecordNotFoundError: true,
+		},
+	)
+	DB, err = gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_busy_timeout=5000"), &gorm.Config{
+		Logger: newLogger,
+	})
 	if err != nil {
 		log.Fatal("failed to connect database:", err)
 	}

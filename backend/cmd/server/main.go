@@ -24,39 +24,39 @@ import (
 	"genai-gallery-backend/internal/handlers"
 )
 
-func serveStaticZip(r *gin.Engine) {
+func serveStaticZip(r *gin.Engine) bool {
 	exePath, err := os.Executable()
 	if err != nil {
-		return
+		return false
 	}
 
 	exe := filepath.Base(exePath)
 	if strings.Index(exe, "genaigallery") != 0 {
-		return
+		return false
 	}
 
 	file, err := os.Open(exePath)
 	if err != nil {
 		log.Fatalln("Could not read self executable")
-		return
+		return false
 	}
 
 	info, err := file.Stat()
 	if err != nil {
 		log.Fatalln("Could not stat self executable")
-		return
+		return false
 	}
 
 	reader, err := zip.NewReader(file, info.Size())
 	if err != nil {
 		log.Fatalf("error reading self zip: %v\n", err)
-		return
+		return false
 	}
 
 	rootFs, err := fs.Sub(reader, ".")
 	if err != nil {
 		log.Fatalf("error creating FS for self zip: %v\n", err)
-		return
+		return false
 	}
 	rootHttpFs := http.FS(rootFs)
 
@@ -65,14 +65,14 @@ func serveStaticZip(r *gin.Engine) {
 	f, err := rootFs.Open("index.html")
 	if err != nil {
 		log.Fatalf("index.html not found in zip")
-		return
+		return false
 	}
 	defer f.Close()
 
 	indexContent, err := io.ReadAll(f)
 	if err != nil {
 		log.Fatalf("error reading index.html")
-		return
+		return false
 	}
 
 	r.GET("/", func(c *gin.Context) {
@@ -82,12 +82,13 @@ func serveStaticZip(r *gin.Engine) {
 	assetsFs, err := fs.Sub(reader, "assets")
 	if err != nil {
 		log.Fatalf("error creating FS for self zip: %v\n", err)
-		return
+		return false
 	}
 
 	r.StaticFS("/assets", http.FS(assetsFs))
 
 	log.Println("Serving static files from self zip")
+	return true
 }
 
 func main() {
@@ -112,7 +113,7 @@ func main() {
 		api.POST("/upload", handlers.Upload)
 	}
 
-	serveStaticZip(r)
+	servingZip := serveStaticZip(r)
 
 	// Determine the port to start with
 	startPort := 5775
@@ -154,8 +155,10 @@ func main() {
 		}
 	}()
 
-	time.Sleep(100 * time.Millisecond)
-	openBrowser(serverUrl)
+	if servingZip {
+		time.Sleep(100 * time.Millisecond)
+		openBrowser(serverUrl)
+	}
 
 	// Block main thread to keep server alive
 	select {}
