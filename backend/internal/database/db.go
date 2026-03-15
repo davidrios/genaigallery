@@ -37,7 +37,7 @@ func InitDB(dbPath string) {
 	}
 
 	// AutoMigrate
-	err = DB.AutoMigrate(&models.Image{}, &models.ImageMetadata{})
+	err = DB.AutoMigrate(&models.Image{}, &models.ImageMetadata{}, &models.AppConfig{})
 	if err != nil {
 		log.Fatal("failed to migrate database:", err)
 	}

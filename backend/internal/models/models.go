@@ -19,3 +19,9 @@ type ImageMetadata struct {
 	Key     string `gorm:"type:varchar(255);index" json:"key"`
 	Value   string `gorm:"type:text;index" json:"value"`
 }
+
+type AppConfig struct {
+	ID    uint   `gorm:"primaryKey;autoIncrement"`
+	Key   string `gorm:"type:varchar(255);uniqueIndex"`
+	Value string `gorm:"type:text"`
+}

@@ -19,9 +19,11 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
+	"genai-gallery-backend/internal/auth"
 	"genai-gallery-backend/internal/config"
 	"genai-gallery-backend/internal/database"
 	"genai-gallery-backend/internal/handlers"
+	"genai-gallery-backend/internal/middleware"
 )
 
 func serveStaticZip(r *gin.Engine) bool {
@@ -94,19 +96,21 @@ func serveStaticZip(r *gin.Engine) bool {
 func main() {
 	config.InitConfig()
 	database.InitDB(config.DBPath)
+	auth.InitAuth()
 
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:" + config.Port},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		AllowCredentials: true,
 	}))
 
 	r.Static(config.StaticImagesRoot, config.ImagesDir)
 
 	api := r.Group("/api")
+	api.Use(middleware.NetworkAuthMiddleware())
 	{
 		api.GET("/image/:id", handlers.GetImage)
 		api.GET("/browse", handlers.Browse)
