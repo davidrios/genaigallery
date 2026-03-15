@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      nightly:
+        description: 'Run as nightly release'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+      - name: Install 7zip
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full
+      - name: Zip frontend
+        working-directory: ./frontend/dist
+        run: 7z a -tzip ../../frontend.zip .
+      - name: Upload frontend zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-zip
+          path: frontend.zip
+          retention-days: 1
+
+  release:
+    needs: build-frontend
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            target: genaigallery-linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            target: genaigallery-linux-arm64
+            cc: aarch64-linux-gnu-gcc
+            cxx: aarch64-linux-gnu-g++
+          - os: macos-13
+            goos: darwin
+            goarch: amd64
+            target: genaigallery-darwin-amd64
+          - os: macos-14
+            goos: darwin
+            goarch: arm64
+            target: genaigallery-darwin-arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            target: genaigallery-windows-amd64.exe
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'backend/go.mod'
+          cache-dependency-path: 'backend/go.sum'
+          
+      - name: Install cross-compiler (Linux ARM64)
+        if: matrix.goos == 'linux' && matrix.goarch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-zip
+          
+      - name: Build backend
+        working-directory: ./backend
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            go build -tags fts5 -ldflags "-s -w" -o ../backend-server.exe cmd/server/main.go
+          else
+            go build -tags fts5 -ldflags "-s -w" -o ../backend-server cmd/server/main.go
+          fi
+        shell: bash
+        env:
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc || '' }}
+          CXX: ${{ matrix.cxx || '' }}
+          
+      - name: Combine binary and frontend
+        shell: bash
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            cat backend-server.exe frontend.zip > ${{ matrix.target }}
+          else
+            cat backend-server frontend.zip > ${{ matrix.target }}
+            chmod +x ${{ matrix.target }}
+          fi
+          
+      - name: Set Release Tag
+        id: set_tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG=nightly-$(date +'%Y%m%d')" >> $GITHUB_ENV
+          else
+            echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+          
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' }}
+          files: ${{ matrix.target }}
