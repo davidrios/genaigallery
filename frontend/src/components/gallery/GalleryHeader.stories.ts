@@ -10,6 +10,7 @@ const meta = {
       options: ['asc', 'desc'],
     },
     searchQuery: { control: 'text' },
+    inPath: { control: 'text' },
   },
   args: {},
 } satisfies Meta<typeof GalleryHeader>
@@ -25,6 +26,7 @@ export const Default: Story = {
     ],
     searchQuery: '',
     sortOrder: 'desc',
+    inPath: 'false',
   },
 }
 
@@ -32,6 +34,14 @@ export const WithSearchQuery: Story = {
   args: {
     ...Default.args,
     searchQuery: 'neon lights',
+  },
+}
+
+export const WithSearchQueryInDir: Story = {
+  args: {
+    ...Default.args,
+    searchQuery: 'neon lights',
+    inPath: 'true',
   },
 }
 

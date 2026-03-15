@@ -10,8 +10,15 @@ import GalleryGrid from './gallery/GalleryGrid.vue'
 import GalleryPaginator from './gallery/GalleryPaginator.vue'
 import MediaOverlay from './gallery/MediaOverlay.vue'
 
-const { searchParams, breadcrumbs, navigateTo, toggleSort, performSearch, navigateToPage } =
-  useGalleryNavigation()
+const {
+  searchParams,
+  breadcrumbs,
+  navigateTo,
+  toggleSort,
+  changeInPath,
+  performSearch,
+  navigateToPage,
+} = useGalleryNavigation()
 
 const { isFetching, error, data } = useGalleryData(searchParams)
 const firstLoad = ref(true)
@@ -53,11 +60,13 @@ const handleOverlaySearch = (query: string) => {
   <div class="container mx-auto min-h-screen p-4">
     <GalleryHeader
       v-model:search-query="searchParams.q"
+      v-model:in-path="searchParams.inPath"
       :breadcrumbs="breadcrumbs"
       :sort-order="searchParams.sort"
       @navigate="navigateTo"
       @search="performSearch"
       @toggle-sort="toggleSort"
+      @change-in-path="changeInPath"
     />
 
     <div v-if="isLoading" class="flex h-20 items-center justify-center">

@@ -6,6 +6,7 @@ export interface SearchParams {
   q: string
   sort: 'desc' | 'asc'
   page: string
+  inPath: string
 }
 
 export function useGalleryNavigation() {
@@ -35,12 +36,16 @@ export function useGalleryNavigation() {
   }
 
   const toggleSort = () => {
-    searchParams.sort = (!searchParams.sort || searchParams.sort === 'desc') ? 'asc' : 'desc'
+    searchParams.sort = !searchParams.sort || searchParams.sort === 'desc' ? 'asc' : 'desc'
   }
 
   const performSearch = useDebounceFn((queryVal: string) => {
     searchParams.q = queryVal
     searchParams.page = '1'
+  }, 500)
+
+  const changeInPath = useDebounceFn((inPath: string) => {
+    searchParams.inPath = inPath
   }, 500)
 
   return {
@@ -51,11 +56,13 @@ export function useGalleryNavigation() {
           q: searchParams.q ?? '',
           sort: searchParams.sort ?? 'desc',
           page: searchParams.page ?? '1',
+          inPath: searchParams.inPath ?? 'false',
         }) as SearchParams,
     ),
     breadcrumbs,
     navigateTo,
     toggleSort,
+    changeInPath,
     performSearch,
     navigateToPage,
   }

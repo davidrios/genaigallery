@@ -3,13 +3,16 @@ defineProps<{
   breadcrumbs: Array<{ name: string; path: string }>
   searchQuery: string
   sortOrder: 'asc' | 'desc'
+  inPath: string
 }>()
 
 const emit = defineEmits<{
   (e: 'navigate', path: string): void
   (e: 'update:searchQuery', value: string): void
+  (e: 'update:inPath', value: string): void
   (e: 'search', value: string): void
   (e: 'toggleSort'): void
+  (e: 'changeInPath', value: string): void
 }>()
 
 import { Home, Search } from 'lucide-vue-next'
@@ -37,24 +40,44 @@ import { Home, Search } from 'lucide-vue-next'
     </div>
 
     <div class="mx-4 max-w-lg flex-1">
-      <div class="group relative">
-        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-          <Search
-            class="h-5 w-5 text-gray-400 transition-colors group-focus-within:text-indigo-500"
+      <div class="flex items-center gap-3">
+        <div class="group relative flex-1">
+          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <Search
+              class="h-5 w-5 text-gray-400 transition-colors group-focus-within:text-indigo-500"
+            />
+          </div>
+          <input
+            :value="searchQuery"
+            type="text"
+            class="block w-full rounded-lg border border-gray-300 bg-white py-2 pr-3 pl-10 leading-5 text-gray-900 placeholder-gray-500 shadow-sm transition-all focus:border-indigo-500 focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:outline-none sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            placeholder="Search metadata (e.g. seed:123 or 'cyberpunk')"
+            @input="
+              (e) => {
+                emit('update:searchQuery', (e.target as HTMLInputElement).value)
+                emit('search', (e.target as HTMLInputElement).value)
+              }
+            "
           />
         </div>
-        <input
-          :value="searchQuery"
-          type="text"
-          class="block w-full rounded-lg border border-gray-300 bg-white py-2 pr-3 pl-10 leading-5 text-gray-900 placeholder-gray-500 shadow-sm transition-all focus:border-indigo-500 focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:outline-none sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-          placeholder="Search metadata (e.g. seed:123 or 'cyberpunk')"
-          @input="
-            (e) => {
-              emit('update:searchQuery', (e.target as HTMLInputElement).value)
-              emit('search', (e.target as HTMLInputElement).value)
-            }
-          "
-        />
+        <label
+          class="flex cursor-pointer items-center gap-1.5 text-sm whitespace-nowrap text-gray-700 select-none dark:text-gray-300"
+        >
+          <input
+            type="checkbox"
+            :checked="inPath === 'true'"
+            @change="
+              (e) => {
+                const isChecked = (e.target as HTMLInputElement).checked
+                const value = isChecked ? 'true' : ''
+                emit('update:inPath', value)
+                emit('changeInPath', value)
+              }
+            "
+            class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800"
+          />
+          in dir
+        </label>
       </div>
     </div>
 

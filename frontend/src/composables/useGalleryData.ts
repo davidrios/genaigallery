@@ -10,6 +10,7 @@ export function useGalleryData(searchParams: Ref<SearchParams>) {
       q: searchParams.value.q,
       sort: searchParams.value.sort,
       page: searchParams.value.page,
+      inPath: searchParams.value.inPath,
     })
 
     return `/api/browse?${apiParams.toString()}`

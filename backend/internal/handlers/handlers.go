@@ -185,7 +185,9 @@ func Browse(c *gin.Context) {
 		limit = 50
 	}
 
-	result, err := BrowseCore(pathParam, q, false, sortOrder, page, limit)
+	inPath := c.Query("inPath") == "true"
+
+	result, err := BrowseCore(pathParam, q, inPath, sortOrder, page, limit)
 	if err != nil {
 		if err.Error() == "Invalid path" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
