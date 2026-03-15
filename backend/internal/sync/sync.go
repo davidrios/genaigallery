@@ -47,6 +47,7 @@ func AddImage(db *gorm.DB, origPath string, modtime time.Time, replace bool) (*m
 	if path == "." {
 		path = ""
 	}
+	path = filepath.ToSlash(path)
 	name := filepath.Base(relPath)
 
 	var image models.Image

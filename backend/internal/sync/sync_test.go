@@ -102,12 +102,16 @@ func TestPerformSync(t *testing.T) {
 			t.Errorf("Image path %s should be relative to ImagesDir, but is absolute", img.Path)
 		}
 
-		relPath := filepath.Join(img.Path, img.Name)
+		if strings.Contains(img.Path, "\\") {
+			t.Errorf("Image path %s must use forward slashes, but contains backslashes", img.Path)
+		}
+
+		relPath := filepath.Join(filepath.FromSlash(img.Path), img.Name)
 
 		// Verify correct CreatedAt
 		info, err := os.Stat(filepath.Join(config.ImagesDir, relPath))
 		if err != nil {
-			t.Fatal("Couldnt stat image file")
+			t.Fatalf("Couldnt stat image file: %v", err)
 		}
 
 		if !img.CreatedAt.Equal(info.ModTime()) {
@@ -218,37 +222,5 @@ func TestUpdateFTS(t *testing.T) {
 
 	if !strings.Contains(row.Content, "apple") || !strings.Contains(row.Content, "banana") || !strings.Contains(row.Content, "cherry") {
 		t.Errorf("Content contains unexpected data: %s", row.Content)
-	}
-}
-
-func TestWindowsPathNormalization(t *testing.T) {
-	db := setupTestDB(t)
-
-	originalImagesDir := config.ImagesDir
-	defer func() {
-		config.ImagesDir = originalImagesDir
-	}()
-
-	// Simulate a base Windows images directory
-	config.ImagesDir = `C:\Images`
-
-	// This simulates a file found by fastwalk inside the base directory on Windows
-	simulatedWindowsPath := `C:\Images\outputs\ComfyUI_0001.png`
-
-	// Call AddImage
-	img, err := AddImage(db, simulatedWindowsPath, time.Now(), false)
-	if err != nil {
-		t.Fatalf("Failed to add simulated Windows image: %v", err)
-	}
-
-	// Verify the database normalized the backward slashes to forward slashes.
-	// We want "outputs" and strictly not "outputs\" or any path containing "\"
-	if strings.Contains(img.Path, `\`) {
-		t.Errorf("Expected path to be normalized with forward slashes, but got backslashes: %s", img.Path)
-	}
-
-	expectedPath := "outputs"
-	if img.Path != expectedPath {
-		t.Errorf("Expected path to be %q, but got %q", expectedPath, img.Path)
 	}
 }

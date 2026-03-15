@@ -89,7 +89,7 @@ func TestExtractMetadata(t *testing.T) {
 	})
 
 	t.Run("ValidComfyUIMP4", func(t *testing.T) {
-		pngPath := "../../testdata/fixtures/video/ComfyUI_00001_.mp4"
+		pngPath := "../../testdata/fixtures/video/subfolder/ComfyUI_00001_.mp4"
 
 		items, err := ExtractMetadata(pngPath)
 		if err != nil {

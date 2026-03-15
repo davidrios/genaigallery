@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gorm.io/gorm"
@@ -157,14 +158,46 @@ func TestBrowseCore(t *testing.T) {
 			t.Fatalf("BrowseCore failed for 'video' subdir: %v", err)
 		}
 
+		if len(res.Images) != 0 {
+			t.Errorf("Expected 0 media files within 'video' directory, got %d", len(res.Images))
+		}
+
+		if len(res.Directories) != 1 {
+			t.Fatalf("Expected 1 subdirectory within 'video', got %d", len(res.Directories))
+		}
+
+		dir := res.Directories[0]
+		if dir.Name != "subfolder" {
+			t.Errorf("Expected subdirectory 'subfolder', got %v", dir.Name)
+		}
+
+		if strings.Contains(dir.Path, "\\") {
+			t.Errorf("Directory path must use forward slashes, got: %s", dir.Path)
+		}
+
+		if dir.Path != "video/subfolder" {
+			t.Errorf("Expected directory path to be 'video/subfolder', got: %s", dir.Path)
+		}
+	})
+
+	t.Run("Browse Sub-subdirectory", func(t *testing.T) {
+		res, err := BrowseCore("video/subfolder", "", false, "asc", 1, 50)
+		if err != nil {
+			t.Fatalf("BrowseCore failed for 'video/subfolder' subdir: %v", err)
+		}
+
 		if len(res.Images) != 1 {
-			t.Errorf("Expected 1 media file within 'video' directory")
+			t.Fatalf("Expected 1 media file within 'video/subfolder' directory")
 		}
 
 		img := res.Images[0]
 
-		if img.Path != "video" {
-			t.Errorf("Image path %s not matched to 'video' dir", img.Path)
+		if strings.Contains(img.Path, "\\") {
+			t.Errorf("Image path must use forward slashes, got: %s", img.Path)
+		}
+
+		if img.Path != "video/subfolder" {
+			t.Errorf("Image path %s not matched to 'video/subfolder' dir", img.Path)
 		}
 	})
 
@@ -218,7 +251,7 @@ func TestBrowseCore(t *testing.T) {
 		})
 
 		t.Run("In path 2", func(t *testing.T) {
-			res, err := BrowseCore("video", "qwen OR wan2.2", true, "asc", 1, 50)
+			res, err := BrowseCore("video/subfolder", "qwen OR wan2.2", true, "asc", 1, 50)
 			if err != nil {
 				t.Fatalf("BrowseCore FTS query failed: %v", err)
 			}
