@@ -1,6 +1,7 @@
 package config
 
 import (
+	"flag"
 	"os"
 	"path/filepath"
 )
@@ -15,19 +16,28 @@ var (
 const StaticImagesRoot = "/images"
 
 func InitConfig() {
-	ImagesDir = os.Getenv("IMAGES_DIR")
-	if ImagesDir == "" {
-		cwd, _ := os.Getwd()
-		ImagesDir = cwd
-	}
+	cwd, _ := os.Getwd()
 
-	DBPath = os.Getenv("DB_PATH")
+	defaultImagesDir := os.Getenv("IMAGES_DIR")
+	if defaultImagesDir == "" {
+		defaultImagesDir = cwd
+	}
+	flag.StringVar(&ImagesDir, "images-dir", defaultImagesDir, "Directory containing the images (or set IMAGES_DIR env var)")
+
+	defaultDbPath := os.Getenv("DB_PATH")
+	var dbPathArg string
+	flag.StringVar(&dbPathArg, "db-path", defaultDbPath, "Path to the SQLite database file (or set DB_PATH env var)")
+
+	defaultPort := os.Getenv("PORT")
+	flag.StringVar(&Port, "port", defaultPort, "Port to run the server on (or set PORT env var)")
+
+	defaultRequireAuth := os.Getenv("REQUIRE_AUTH") == "true"
+	flag.BoolVar(&RequireAuth, "require-auth", defaultRequireAuth, "Require authentication for all networks (or set REQUIRE_AUTH=true env var)")
+
+	flag.Parse()
+
+	DBPath = dbPathArg
 	if DBPath == "" {
 		DBPath = filepath.Join(ImagesDir, "genaigallery.db")
 	}
-
-	Port = os.Getenv("PORT")
-	// If Port is empty, we will handle finding a free port in main.go
-
-	RequireAuth = os.Getenv("REQUIRE_AUTH") != ""
 }
