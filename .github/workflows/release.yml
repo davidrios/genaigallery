@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
       - name: Install dependencies
         working-directory: ./frontend
         run: npm ci
@@ -40,8 +40,26 @@ jobs:
           path: frontend.zip
           retention-days: 1
 
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'backend/go.mod'
+          cache-dependency-path: 'backend/go.sum'
+      - name: Run Tests
+        working-directory: ./backend
+        run: go test -v -tags fts5 ./...
+        env:
+          CGO_ENABLED: 1
+
   release:
-    needs: build-frontend
+    needs: [build-frontend, test]
     strategy:
       matrix:
         include:
@@ -139,6 +157,15 @@ jobs:
             echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
           fi
           
+      - name: Delete Previous Nightly Release
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Try to delete the existing release and tag, ignore errors if it doesn't exist
+          gh release delete ${{ env.TAG }} --cleanup-tag -y || true
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
