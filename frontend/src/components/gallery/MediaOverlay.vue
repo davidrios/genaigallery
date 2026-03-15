@@ -15,6 +15,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'navigate', dir: 'next' | 'prev'): void
+  (e: 'navigate-path', path: string): void
 }>()
 
 const isLoading = refDebounced(
@@ -102,6 +103,13 @@ const sortedMetadata = computed(() => {
         :class="{ 'w-0 opacity-0': !selectedImage }"
       >
         <div class="sticky top-0 border-b border-gray-800 bg-gray-900/95 p-4">
+          <button
+            class="mt-1 text-left text-sm text-gray-500"
+            @click.stop="emit('navigate-path', selectedImage.base_path)"
+            @click="emit('close')"
+          >
+            {{ selectedImage.base_path }}/
+          </button>
           <h2 class="truncate text-lg font-semibold text-gray-100" :title="selectedImage.path">
             {{ selectedImage.name }}
           </h2>

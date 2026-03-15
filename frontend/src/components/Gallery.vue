@@ -83,6 +83,7 @@ const handlePageChange = (page: number | string) => {
       :has-next="hasNext"
       @close="closeOverlay"
       @navigate="navigateImage"
+      @navigatePath="navigateTo"
     />
   </div>
 </template>

@@ -1,5 +1,6 @@
 export interface Image {
   id: string
+  base_path: string
   path: string
   name: string
   created_at: string

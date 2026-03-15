@@ -25,7 +25,7 @@ function getSampleImages(seed: string) {
     },
     {
       id: '7',
-      path: `https://github.com/davidrios/genaigallery/raw/refs/heads/main/backend/testdata/fixtures/video/ComfyUI_00001_.mp4`,
+      path: `https://github.com/davidrios/genaigallery/raw/refs/heads/main/backend/testdata/fixtures/video/subfolder/ComfyUI_00001_.mp4`,
       name: 'ComfyUI_00001_.mp4',
       created_at: new Date().toISOString(),
     },

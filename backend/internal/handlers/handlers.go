@@ -45,13 +45,21 @@ func GetImage(c *gin.Context) {
 		return
 	}
 
+	basePath := image.Path
+
 	if image.Path != "" {
 		image.Path = config.StaticImagesRoot + "/" + image.Path + "/" + image.Name
 	} else {
 		image.Path = config.StaticImagesRoot + "/" + image.Name
 	}
 
-	c.JSON(http.StatusOK, image)
+	c.JSON(http.StatusOK, struct {
+		*models.Image
+		BasePath string `json:"base_path"`
+	}{
+		Image:    image,
+		BasePath: basePath,
+	})
 }
 
 type Directory struct {

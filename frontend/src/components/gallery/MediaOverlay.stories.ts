@@ -18,6 +18,7 @@ type Story = StoryObj<typeof meta>
 const sampleImageWithMetadata = {
   id: '1',
   name: 'some image',
+  basePath: 'comfyui',
   path: `https://picsum.photos/seed/seed1/1024/768`,
   created_at: new Date().toISOString(),
   metadata_items: [
@@ -69,7 +70,7 @@ export const WithVideo: Story = {
     selectedImage: {
       ...sampleImageWithMetadata,
       metadata_items: undefined,
-      path: `https://github.com/davidrios/genaigallery/raw/refs/heads/main/backend/testdata/fixtures/video/ComfyUI_00001_.mp4`,
+      path: `https://github.com/davidrios/genaigallery/raw/refs/heads/main/backend/testdata/fixtures/video/subfolder/ComfyUI_00001_.mp4`,
     },
   },
 }
