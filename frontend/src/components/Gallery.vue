@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { refDebounced } from '@vueuse/core'
 
 import { useGalleryData } from '@/composables/useGalleryData'
@@ -14,10 +14,19 @@ const { searchParams, breadcrumbs, navigateTo, toggleSort, performSearch, naviga
   useGalleryNavigation()
 
 const { isFetching, error, data } = useGalleryData(searchParams)
+const firstLoad = ref(true)
+watch(isFetching, (isFetching) => {
+  if (isFetching) {
+    firstLoad.value = false
+  }
+})
 
 const directories = computed(() => data.value?.directories || [])
 const images = computed(() => data.value?.images || [])
-const isLoading = refDebounced(isFetching, 500)
+const isLoading = refDebounced(
+  computed(() => firstLoad.value || isFetching.value),
+  300,
+)
 
 const {
   selectedImage,

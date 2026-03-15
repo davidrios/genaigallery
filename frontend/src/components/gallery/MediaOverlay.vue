@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { Image } from '@/types'
 import { isVideo } from '@/lib/utils'
 import { X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { refDebounced } from '@vueuse/core'
 
 const props = defineProps<{
   selectedImage: Image | null
@@ -15,6 +16,18 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'navigate', dir: 'next' | 'prev'): void
 }>()
+
+const isLoading = refDebounced(
+  computed(() => props.isLoadingDetails),
+  300,
+)
+
+const hasMetadata = refDebounced(
+  computed(
+    () => props.selectedImage?.metadata_items && props.selectedImage.metadata_items.length > 0,
+  ),
+  300,
+)
 
 const sortedMetadata = computed(() => {
   if (!props.selectedImage?.metadata_items) return []
@@ -90,7 +103,7 @@ const sortedMetadata = computed(() => {
       >
         <div class="sticky top-0 border-b border-gray-800 bg-gray-900/95 p-4">
           <h2 class="truncate text-lg font-semibold text-gray-100" :title="selectedImage.path">
-            {{ selectedImage.path.split('/').pop() }}
+            {{ selectedImage.name }}
           </h2>
           <p class="mt-1 text-sm text-gray-500">
             {{ new Date(selectedImage.created_at).toLocaleString() }}
@@ -98,18 +111,18 @@ const sortedMetadata = computed(() => {
         </div>
 
         <div class="custom-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
-          <div v-if="isLoadingDetails" class="py-8 text-center">
+          <div v-if="isLoading" class="py-8 text-center">
             <div
               class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-500"
             ></div>
           </div>
 
-          <div v-else-if="selectedImage.metadata_items && selectedImage.metadata_items.length > 0">
+          <div v-else-if="hasMetadata">
             <h3 class="mb-3 text-xs font-bold tracking-wider text-gray-500 uppercase">
               Generation Params
             </h3>
             <div class="space-y-3">
-              <div v-for="item in sortedMetadata" :key="item.key" class="group">
+              <div v-for="item in sortedMetadata" class="group">
                 <dt class="mb-1 text-xs font-medium break-all text-indigo-400">{{ item.key }}</dt>
                 <dd
                   class="rounded border border-transparent bg-gray-800/50 p-2 font-mono text-sm break-words text-gray-300 transition-colors group-hover:border-gray-700"
