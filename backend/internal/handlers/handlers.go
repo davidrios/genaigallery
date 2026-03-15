@@ -116,7 +116,7 @@ func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page,
 					}
 					directories = append(directories, Directory{
 						Name: entry.Name(),
-						Path: dirPath,
+						Path: filepath.ToSlash(dirPath),
 					})
 				}
 			}
