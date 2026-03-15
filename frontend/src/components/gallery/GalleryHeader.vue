@@ -50,7 +50,7 @@ import { Home, Search } from 'lucide-vue-next'
           <input
             :value="searchQuery"
             type="text"
-            class="block w-full rounded-lg border border-gray-300 bg-white py-2 pr-3 pl-10 leading-5 text-gray-900 placeholder-gray-500 shadow-sm transition-all focus:border-indigo-500 focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:outline-none sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            class="block w-full rounded-lg border border-gray-300 bg-white py-2 pr-24 pl-10 leading-5 text-gray-900 placeholder-gray-500 shadow-sm transition-all focus:border-indigo-500 focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:outline-none sm:text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             placeholder="Search metadata (e.g. seed:123 or 'cyberpunk')"
             @input="
               (e) => {
@@ -59,25 +59,25 @@ import { Home, Search } from 'lucide-vue-next'
               }
             "
           />
+          <label
+            class="absolute inset-y-0 right-0 flex cursor-pointer items-center gap-1.5 pr-3 text-xs whitespace-nowrap text-gray-500 select-none hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <input
+              type="checkbox"
+              :checked="inPath === 'true'"
+              @change="
+                (e) => {
+                  const isChecked = (e.target as HTMLInputElement).checked
+                  const value = isChecked ? 'true' : ''
+                  emit('update:inPath', value)
+                  emit('changeInPath', value)
+                }
+              "
+              class="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800"
+            />
+            in dir
+          </label>
         </div>
-        <label
-          class="flex cursor-pointer items-center gap-1.5 text-sm whitespace-nowrap text-gray-700 select-none dark:text-gray-300"
-        >
-          <input
-            type="checkbox"
-            :checked="inPath === 'true'"
-            @change="
-              (e) => {
-                const isChecked = (e.target as HTMLInputElement).checked
-                const value = isChecked ? 'true' : ''
-                emit('update:inPath', value)
-                emit('changeInPath', value)
-              }
-            "
-            class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800"
-          />
-          in dir
-        </label>
       </div>
     </div>
 
