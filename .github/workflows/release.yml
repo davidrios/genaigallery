@@ -127,6 +127,7 @@ jobs:
             tar -czvf ${{ matrix.target }}.tar.gz ${{ matrix.target }}
             echo "FILE=${{ matrix.target }}.tar.gz" >> $GITHUB_ENV
           fi
+          rm ${{ matrix.target }}
 
       - name: Set Release Tag
         id: set_tag
