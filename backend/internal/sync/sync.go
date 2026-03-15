@@ -81,7 +81,7 @@ func AddImage(db *gorm.DB, origPath string, modtime time.Time, replace bool) (*m
 }
 
 func PerformSync(db *gorm.DB) {
-	log.Println("Starting sync...")
+	log.Println("Starting sync, this may take a while...")
 
 	info, err := os.Stat(config.DBPath)
 	if err != nil {
@@ -96,8 +96,18 @@ func PerformSync(db *gorm.DB) {
 	}
 
 	var syncedCount uint64
+	var scannedCount uint64
 
-	err = findModifiedMedia(config.ImagesDir, modTime, func(path string, modtime time.Time) {
+	err = findModifiedMedia(config.ImagesDir, modTime, func(path string, modtime time.Time, syncFile bool) {
+		partialScanned := atomic.AddUint64(&scannedCount, 1)
+		if partialScanned%5000 == 0 {
+			log.Printf("Scanned %d files, continuing...\n", partialScanned)
+		}
+
+		if !syncFile {
+			return
+		}
+
 		_, err := AddImage(db, path, modtime, true)
 		if err != nil {
 			log.Printf("Error adding image %s: %v", path, err)
@@ -112,7 +122,7 @@ func PerformSync(db *gorm.DB) {
 		return
 	}
 
-	log.Printf("Synced %d files.\n", atomic.LoadUint64(&syncedCount))
+	log.Printf("Scanned %d files, synced %d.\n", atomic.LoadUint64(&scannedCount), atomic.LoadUint64(&syncedCount))
 }
 
 func extractAndSaveMetadata(db *gorm.DB, img *models.Image, fullPath string) {
@@ -171,7 +181,7 @@ func updateFTS(db *gorm.DB, img *models.Image, metaData *[]models.ImageMetadata)
 	db.Exec("INSERT INTO search_index (image_id, content) VALUES (?, ?)", img.ID, strings.Join(fullContent, " "))
 }
 
-func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(string, time.Time)) error {
+func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(string, time.Time, bool)) error {
 	err := fastwalk.Walk(nil, rootDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -191,9 +201,7 @@ func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(str
 			return nil
 		}
 
-		if info.ModTime().After(dbModTime) {
-			processFunc(path, info.ModTime())
-		}
+		processFunc(path, info.ModTime(), info.ModTime().After(dbModTime))
 
 		return nil
 	})
