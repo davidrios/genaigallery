@@ -42,6 +42,11 @@ const handlePageChange = (page: number | string) => {
   navigateToPage(page.toString())
   window.scrollTo({ top: 0, behavior: 'instant' })
 }
+
+const handleOverlaySearch = (query: string) => {
+  performSearch(query)
+  window.scrollTo({ top: 0, behavior: 'instant' })
+}
 </script>
 
 <template>
@@ -84,6 +89,7 @@ const handlePageChange = (page: number | string) => {
       @close="closeOverlay"
       @navigate="navigateImage"
       @navigatePath="navigateTo"
+      @search="handleOverlaySearch"
     />
   </div>
 </template>

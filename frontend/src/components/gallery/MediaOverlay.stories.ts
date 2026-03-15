@@ -18,7 +18,7 @@ type Story = StoryObj<typeof meta>
 const sampleImageWithMetadata = {
   id: '1',
   name: 'some image',
-  basePath: 'comfyui',
+  base_path: 'comfyui',
   path: `https://picsum.photos/seed/seed1/1024/768`,
   created_at: new Date().toISOString(),
   metadata_items: [

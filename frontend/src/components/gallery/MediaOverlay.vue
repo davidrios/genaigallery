@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type { Image } from '@/types'
 import { isVideo } from '@/lib/utils'
-import { X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { X, ChevronLeft, ChevronRight, Search } from 'lucide-vue-next'
 import { refDebounced } from '@vueuse/core'
 
 const props = defineProps<{
@@ -16,6 +16,7 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'navigate', dir: 'next' | 'prev'): void
   (e: 'navigate-path', path: string): void
+  (e: 'search', query: string): void
 }>()
 
 const isLoading = refDebounced(
@@ -131,7 +132,19 @@ const sortedMetadata = computed(() => {
             </h3>
             <div class="space-y-3">
               <div v-for="item in sortedMetadata" class="group">
-                <dt class="mb-1 text-xs font-medium break-all text-indigo-400">{{ item.key }}</dt>
+                <dt
+                  class="mb-1 flex items-center justify-between text-xs font-medium break-all text-indigo-400"
+                >
+                  <span>{{ item.key }}</span>
+                  <button
+                    class="ml-2 rounded p-1 text-gray-500 transition-colors hover:bg-gray-800 hover:text-indigo-300"
+                    title="Search for this value"
+                    @click.stop="emit('search', `${item.key}:${item.values?.[0]}`)"
+                    @click="emit('close')"
+                  >
+                    <Search class="h-3 w-3" />
+                  </button>
+                </dt>
                 <dd
                   class="rounded border border-transparent bg-gray-800/50 p-2 font-mono text-sm break-words text-gray-300 transition-colors"
                 >
