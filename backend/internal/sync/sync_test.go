@@ -20,8 +20,10 @@ func TestFindModifiedMedia(t *testing.T) {
 	zeroTime := time.Time{}
 
 	var discoveredFiles []string
-	err := findModifiedMedia(rootDir, zeroTime, func(path string, modtime time.Time) {
-		discoveredFiles = append(discoveredFiles, path)
+	err := findModifiedMedia(rootDir, zeroTime, func(path string, modtime time.Time, syncFile bool) {
+		if syncFile {
+			discoveredFiles = append(discoveredFiles, path)
+		}
 	})
 
 	if err != nil {
@@ -41,8 +43,10 @@ func TestFindModifiedMedia(t *testing.T) {
 
 	futureTime := time.Now().Add(24 * time.Hour)
 	var futureDiscoveredFiles []string
-	err = findModifiedMedia(rootDir, futureTime, func(path string, modtime time.Time) {
-		futureDiscoveredFiles = append(futureDiscoveredFiles, path)
+	err = findModifiedMedia(rootDir, futureTime, func(path string, modtime time.Time, syncFile bool) {
+		if syncFile {
+			futureDiscoveredFiles = append(futureDiscoveredFiles, path)
+		}
 	})
 
 	if err != nil {
