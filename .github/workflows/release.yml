@@ -116,6 +116,18 @@ jobs:
             chmod +x ${{ matrix.target }}
           fi
           
+      - name: Compress final artifact
+        shell: bash
+        id: compress
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            7z a ${{ matrix.target }}.zip ${{ matrix.target }}
+            echo "FILE=${{ matrix.target }}.zip" >> $GITHUB_ENV
+          else
+            tar -czvf ${{ matrix.target }}.tar.gz ${{ matrix.target }}
+            echo "FILE=${{ matrix.target }}.tar.gz" >> $GITHUB_ENV
+          fi
+
       - name: Set Release Tag
         id: set_tag
         shell: bash
@@ -131,4 +143,4 @@ jobs:
         with:
           tag_name: ${{ env.TAG }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
-          files: ${{ matrix.target }}
+          files: ${{ env.FILE }}
