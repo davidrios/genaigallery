@@ -145,8 +145,10 @@ func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page,
 		query = query.Order("created_at " + sortOrder)
 	}
 
-	if q == "" || inPath {
+	if q == "" {
 		query = query.Where("path = ?", pathParam)
+	} else if inPath && pathParam != "" {
+		query = query.Where("(path = ? OR path LIKE ?)", pathParam, pathParam+"/%")
 	}
 
 	var total int64

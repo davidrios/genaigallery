@@ -245,8 +245,8 @@ func TestBrowseCore(t *testing.T) {
 				t.Fatalf("BrowseCore FTS query failed: %v", err)
 			}
 
-			if res.Total != 0 {
-				t.Fatalf("Expected 0 results, got %v", res.Total)
+			if res.Total != 1 {
+				t.Fatalf("Expected 1 result, got %v", res.Total)
 			}
 		})
 

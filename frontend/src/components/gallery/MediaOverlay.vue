@@ -105,7 +105,7 @@ const sortedMetadata = computed(() => {
       >
         <div class="sticky top-0 border-b border-gray-800 bg-gray-900/95 p-4">
           <button
-            class="mt-1 text-left text-sm text-gray-500"
+            class="mt-1 pr-5 text-left text-sm text-gray-500"
             @click.stop="emit('navigate-path', selectedImage.base_path)"
             @click="emit('close')"
           >

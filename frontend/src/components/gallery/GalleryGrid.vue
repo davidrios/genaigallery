@@ -112,7 +112,7 @@ const emit = defineEmits<{
         v-if="directories.length === 0 && images.length == 0"
         class="py-20 text-center text-gray-500"
       >
-        Empty directory.
+        No results found.
       </div>
     </template>
   </div>
