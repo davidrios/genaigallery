@@ -60,8 +60,36 @@ jobs:
         env:
           CGO_ENABLED: 1
 
-  release:
+  prepare-release:
     needs: [build-frontend, test]
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.set_tag.outputs.TAG }}
+    steps:
+      - name: Set Release Tag
+        id: set_tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG_NAME="nightly-$(date +'%Y%m%d')"
+            echo "TAG=$TAG_NAME" >> $GITHUB_ENV
+            echo "TAG=$TAG_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "TAG=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Delete Previous Nightly Release
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Try to delete the existing release and tag, ignore errors if it doesn't exist
+          gh release delete ${{ env.TAG }} --cleanup-tag -y || true
+
+  release:
+    needs: prepare-release
     strategy:
       matrix:
         include:
@@ -154,28 +182,9 @@ jobs:
         with:
           subject-path: ${{ env.FILE }}
 
-      - name: Set Release Tag
-        id: set_tag
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "TAG=nightly-$(date +'%Y%m%d')" >> $GITHUB_ENV
-          else
-            echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-          fi
-          
-      - name: Delete Previous Nightly Release
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Try to delete the existing release and tag, ignore errors if it doesn't exist
-          gh release delete ${{ env.TAG }} --cleanup-tag -y || true
-
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.TAG }}
+          tag_name: ${{ needs.prepare-release.outputs.tag_name }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           files: ${{ env.FILE }}
