@@ -6,9 +6,10 @@ import (
 )
 
 var (
-	ImagesDir string
-	DBPath    string
-	Port      string
+	ImagesDir   string
+	DBPath      string
+	Port        string
+	RequireAuth bool
 )
 
 const StaticImagesRoot = "/images"
@@ -27,4 +28,6 @@ func InitConfig() {
 
 	Port = os.Getenv("PORT")
 	// If Port is empty, we will handle finding a free port in main.go
+
+	RequireAuth = os.Getenv("REQUIRE_AUTH") != ""
 }

@@ -107,10 +107,11 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	r.Use(middleware.NetworkAuthMiddleware())
+
 	r.Static(config.StaticImagesRoot, config.ImagesDir)
 
 	api := r.Group("/api")
-	api.Use(middleware.NetworkAuthMiddleware())
 	{
 		api.GET("/image/:id", handlers.GetImage)
 		api.GET("/browse", handlers.Browse)

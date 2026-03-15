@@ -13,6 +13,7 @@ import (
 )
 
 var GlobalBearerToken string
+var GlobalBasicAuthPassword string
 
 func InitAuth() {
 	db := database.GetDB()
@@ -44,12 +45,41 @@ func InitAuth() {
 
 	GlobalBearerToken = config.Value
 
+	var basicAuthConfig models.AppConfig
+	err = db.Where("key = ?", "basic_auth_password").First(&basicAuthConfig).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Generate a new 16-byte secure random hex password
+			bytes := make([]byte, 16)
+			if _, randErr := rand.Read(bytes); randErr != nil {
+				log.Fatalf("failed to generate secure crypto random basic auth password: %v", randErr)
+			}
+			newPassword := hex.EncodeToString(bytes)
+
+			basicAuthConfig = models.AppConfig{
+				Key:   "basic_auth_password",
+				Value: newPassword,
+			}
+
+			if insertErr := db.Create(&basicAuthConfig).Error; insertErr != nil {
+				log.Fatalf("failed to save generated basic auth password to database: %v", insertErr)
+			}
+		} else {
+			log.Fatalf("failed to fetch basic auth config from database: %v", err)
+		}
+	}
+
+	GlobalBasicAuthPassword = basicAuthConfig.Value
+
 	fmt.Println()
 	fmt.Println("==========================================================================")
 	fmt.Println(" GenAI Gallery - Remote Access Configuration")
 	fmt.Println("==========================================================================")
-	fmt.Println(" To connect the frontend from a remote network, use this token:")
-	fmt.Printf(" Bearer %s\n", GlobalBearerToken)
+	fmt.Println(" To connect from a remote network or browser, use the following:")
+	fmt.Println()
+	fmt.Printf(" [API/Client] Bearer %s\n", GlobalBearerToken)
+	fmt.Printf(" [Web UI]     Username: (leave blank)\n")
+	fmt.Printf("              Password: %s\n", GlobalBasicAuthPassword)
 	fmt.Println("==========================================================================")
 	fmt.Println()
 }
