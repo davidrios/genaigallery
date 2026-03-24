@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { refDebounced } from '@vueuse/core'
+import type { PageResult } from 'wc-infinite-scroller'
 
-import { useGalleryData } from '@/composables/useGalleryData'
-import { useGalleryNavigation } from '@/composables/useGalleryNavigation'
+import { fetchBrowse, useGalleryData } from '@/composables/useGalleryData'
+import { useGalleryNavigation, type SearchParams } from '@/composables/useGalleryNavigation'
 import { useMediaOverlay } from '@/composables/useMediaOverlay'
 import GalleryHeader from './gallery/GalleryHeader.vue'
 import GalleryGrid from './gallery/GalleryGrid.vue'
-import GalleryPaginator from './gallery/GalleryPaginator.vue'
 import MediaOverlay from './gallery/MediaOverlay.vue'
+import type { Image } from '@/types'
 
 const {
   searchParams,
@@ -20,7 +21,8 @@ const {
   navigateToPage,
 } = useGalleryNavigation()
 
-const { isFetching, error, data } = useGalleryData(searchParams)
+const galleryData = useGalleryData(searchParams)
+const { isFetching, error, data } = galleryData
 const firstLoad = ref(true)
 watch(isFetching, (isFetching) => {
   if (isFetching) {
@@ -45,15 +47,34 @@ const {
   navigateImage,
 } = useMediaOverlay(images)
 
-const handlePageChange = (page: number | string) => {
-  navigateToPage(page.toString())
-  window.scrollTo({ top: 0, behavior: 'instant' })
-}
-
 const handleOverlaySearch = (query: string) => {
   performSearch(query)
   window.scrollTo({ top: 0, behavior: 'instant' })
 }
+
+async function fetchPage(page: number): Promise<PageResult<Image>> {
+  const res = await fetchBrowse({ ...searchParams.value, page: page.toString() })
+  const pageResult = {
+    currentPage: res.page,
+    items: res.images,
+    totalPages: res.pages,
+  }
+  return pageResult
+}
+
+const id = ref(1)
+const oldParams = ref<SearchParams>({ ...searchParams.value })
+watch(searchParams, (newParams) => {
+  if (
+    newParams.q !== oldParams.value.q ||
+    newParams.path !== oldParams.value.path ||
+    newParams.sort !== oldParams.value.sort ||
+    newParams.inPath !== oldParams.value.inPath
+  ) {
+    id.value += 1
+  }
+  oldParams.value = { ...newParams }
+})
 </script>
 
 <template>
@@ -74,20 +95,16 @@ const handleOverlaySearch = (query: string) => {
     </div>
     <template v-else>
       <GalleryGrid
+        :key="id"
         :directories="directories"
         :images="images"
         :error="error"
+        :fetch-page="fetchPage"
+        :current-page="searchParams.page"
         @navigate="navigateTo"
         @select-image="openImage"
+        @navigate-to-page="navigateToPage"
       />
-
-      <div v-if="data?.pages && data.pages > 1" class="mt-8">
-        <GalleryPaginator
-          :current-page="data.page"
-          :total-pages="data.pages"
-          @update:current-page="handlePageChange"
-        />
-      </div>
     </template>
 
     <MediaOverlay
