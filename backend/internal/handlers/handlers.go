@@ -219,7 +219,6 @@ func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page,
 		videoPreview := ""
 		if strings.EqualFold(filepath.Ext(images[i].Name), ".mp4") {
 			videoPreview = generateVideoPreview(&images[i])
-			log.Println(videoPreview)
 		}
 		browseImages[i] = BrowseResultImage{
 			Image:        &images[i],
