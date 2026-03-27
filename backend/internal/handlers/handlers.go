@@ -185,9 +185,13 @@ func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page,
 	}
 
 	if q != "" {
-		q = toFTSQuery(q)
-		query = query.Joins("JOIN (select image_id, min(rank) rank from search_index where content match ? group by image_id order by rank) t1 on t1.image_id = images.id", q)
-		query = query.Order("t1.rank asc, created_at " + sortOrder)
+		if q != "*" {
+			q = toFTSQuery(q)
+			query = query.Joins("JOIN (select image_id, min(rank) rank from search_index where content match ? group by image_id order by rank) t1 on t1.image_id = images.id", q)
+			query = query.Order("t1.rank asc, created_at " + sortOrder)
+		} else {
+			query = query.Order("created_at " + sortOrder)
+		}
 	} else {
 		query = query.Order("created_at " + sortOrder)
 	}
