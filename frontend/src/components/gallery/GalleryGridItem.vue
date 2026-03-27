@@ -27,7 +27,7 @@ onUnmounted(() => {
     >
       <template v-if="isVideo(image.path)">
         <img
-          class="h-full w-full object-cover object-center transition-opacity duration-300 group-hover:opacity-75"
+          class="h-full max-h-[50vh] w-full object-contain object-center transition-opacity duration-300 group-hover:opacity-75"
           loading="lazy"
           :src="
             image.video_preview ||
@@ -48,7 +48,7 @@ onUnmounted(() => {
         v-else
         :src="image.path"
         :alt="image.path"
-        class="h-full w-full object-cover object-center transition-opacity duration-300 group-hover:opacity-75"
+        class="h-full max-h-[50vh] w-full object-contain object-center transition-opacity duration-300 group-hover:opacity-75"
         loading="lazy"
       />
     </div>
