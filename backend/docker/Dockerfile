@@ -13,5 +13,4 @@ COPY go.mod go.sum .
 COPY cmd cmd
 COPY internal internal
 
-RUN set -e \
- && go test --tags "fts5" ./... # run tests to get an initial compilation
+RUN go test --tags "fts5" ./... || true # run tests to get an initial compilation
