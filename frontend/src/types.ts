@@ -5,6 +5,7 @@ export interface Image {
   name: string
   created_at: string
   metadata_items?: { key: string; value: string }[]
+  video_preview?: string
 }
 
 export interface Directory {

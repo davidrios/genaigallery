@@ -2,6 +2,7 @@
 import { isVideo } from '@/lib/utils'
 import type { Image } from '@/types'
 import { onUnmounted } from 'vue'
+import { Play } from 'lucide-vue-next'
 
 const props = defineProps<{
   image: Image
@@ -22,15 +23,27 @@ onUnmounted(() => {
     class="group relative overflow-hidden rounded-xl bg-white shadow-md transition-all duration-300 hover:shadow-xl dark:bg-gray-800"
   >
     <div
-      class="aspect-w-1 aspect-h-1 xl:aspect-w-7 xl:aspect-h-8 w-full overflow-hidden bg-gray-200 dark:bg-gray-700"
+      class="aspect-w-1 aspect-h-1 xl:aspect-w-7 xl:aspect-h-8 relative w-full overflow-hidden bg-gray-200 dark:bg-gray-700"
     >
-      <video
-        v-if="isVideo(image.path)"
-        :src="image.path"
-        controls
-        preload="metadata"
-        class="h-full w-full bg-black object-cover object-center"
-      ></video>
+      <template v-if="isVideo(image.path)">
+        <img
+          class="h-full w-full object-cover object-center transition-opacity duration-300 group-hover:opacity-75"
+          loading="lazy"
+          :src="
+            image.video_preview ||
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+          "
+        />
+        <div
+          class="absolute flex items-center justify-center"
+          style="width: 100%; top: calc(50% - 24px)"
+        >
+          <Play
+            class="h-12 w-12 rounded-md bg-gray-200 p-1 text-gray-500 opacity-75 dark:bg-gray-700 dark:text-gray-400"
+            :stroke-width="1.5"
+          />
+        </div>
+      </template>
       <img
         v-else
         :src="image.path"
@@ -54,7 +67,6 @@ onUnmounted(() => {
     </div>
 
     <button
-      v-if="!isVideo(image.path)"
       class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
       @click.stop="emit('selectImage', image)"
     >

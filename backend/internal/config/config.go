@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -11,6 +12,7 @@ var (
 	DBPath      string
 	Port        string
 	RequireAuth bool
+	FfmpegPath  string
 )
 
 const StaticImagesRoot = "/images"
@@ -33,6 +35,22 @@ func InitConfig() {
 
 	defaultRequireAuth := os.Getenv("REQUIRE_AUTH") == "true"
 	flag.BoolVar(&RequireAuth, "require-auth", defaultRequireAuth, "Require authentication for all networks (or set REQUIRE_AUTH=true env var)")
+
+	defaultFfmpegPath := os.Getenv("FFMPEG_PATH")
+	var ffmpegPathArg string
+	flag.StringVar(&ffmpegPathArg, "ffmpeg-path", defaultFfmpegPath, "Path to the ffmpeg executable (or set FFMPEG_PATH env var). Used for video preview extraction")
+	FfmpegPath = ffmpegPathArg
+	if FfmpegPath == "" {
+		p, err := exec.LookPath("ffmpeg")
+		if err == nil {
+			FfmpegPath = p
+		} else {
+			p, err := exec.LookPath("ffmpeg.exe")
+			if err == nil {
+				FfmpegPath = p
+			}
+		}
+	}
 
 	flag.Parse()
 
