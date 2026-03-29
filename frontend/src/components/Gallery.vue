@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { refDebounced } from '@vueuse/core'
-import type { PageResult } from 'wc-infinite-scroller'
+import type { PageResult, PagesFetchedEvent } from 'wc-infinite-scroller'
 
 import { fetchBrowse, useGalleryData } from '@/composables/useGalleryData'
 import { useGalleryNavigation, type SearchParams } from '@/composables/useGalleryNavigation'
@@ -37,6 +37,8 @@ const isLoading = refDebounced(
   300,
 )
 
+const pagesFetched = ref<PagesFetchedEvent<Image>['detail'] | null>(null)
+
 const {
   selectedImage,
   isLoadingDetails,
@@ -45,7 +47,12 @@ const {
   openImage,
   closeOverlay,
   navigateImage,
-} = useMediaOverlay(images)
+  wantPage,
+} = useMediaOverlay(pagesFetched)
+
+watch(wantPage, (wantPage) => {
+  navigateToPage(wantPage.toString())
+})
 
 const handleOverlaySearch = (query: string) => {
   performSearch(query)
@@ -96,6 +103,7 @@ watch(searchParams, (newParams) => {
     <template v-else>
       <GalleryGrid
         :key="id"
+        v-model:pages-fetched="pagesFetched"
         :directories="directories"
         :images="images"
         :error="error"
@@ -114,7 +122,7 @@ watch(searchParams, (newParams) => {
       :has-next="hasNext"
       @close="closeOverlay"
       @navigate="navigateImage"
-      @navigatePath="navigateTo"
+      @navigate-path="navigateTo"
       @search="handleOverlaySearch"
     />
   </div>

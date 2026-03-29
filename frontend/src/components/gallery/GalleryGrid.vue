@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { Folder } from 'lucide-vue-next'
+import {
+  InfiniteScroller,
+  register,
+  type PageChangedEvent,
+  type PageResult,
+  type PagesFetchedEvent,
+} from 'wc-infinite-scroller'
 
 import type { Directory, Image } from '@/types'
 import GalleryGridItem from './GalleryGridItem.vue'
-import { InfiniteScroller, register, type PageResult } from 'wc-infinite-scroller'
-import { computed, getCurrentInstance, h, onMounted, ref, render } from 'vue'
+import { computed, getCurrentInstance, h, onMounted, ref, render, watch } from 'vue'
 import GalleryGridItemSkel from './GalleryGridItemSkel.vue'
 
 register()
@@ -21,6 +27,7 @@ const emit = defineEmits<{
   (e: 'navigate', path: string): void
   (e: 'selectImage', image: Image): void
   (e: 'navigateToPage', path: string): void
+  (e: 'update:pagesFetched', data: PagesFetchedEvent<Image>['detail']): void
 }>()
 
 const error = computed((err) => {
@@ -54,7 +61,7 @@ onMounted(() => {
     const skeletons = []
     for (let i = 0; i < 50; i++) {
       const skel = el.firstElementChild?.cloneNode() as HTMLElement
-      skel.innerHTML = el.firstElementChild?.innerHTML!
+      skel.innerHTML = el.firstElementChild?.innerHTML ?? ''
       skeletons.push(skel)
     }
     render(null, el)
@@ -72,23 +79,34 @@ onMounted(() => {
         console.log('unmounted!', item.id)
       },
     })
-    vnode.appContext = getCurrentInstance()?.appContext as any
+    vnode.appContext = getCurrentInstance()?.appContext ?? null
     render(vnode, el)
     return el
   }
 
-  infiniteScroller.value.addEventListener(
-    'page-changed',
-    (e: CustomEventInit<{ page: number }>) => {
-      if (e.detail == null) {
-        return
-      }
-      emit('navigateToPage', e.detail.page.toString())
-    },
-  )
+  infiniteScroller.value.addEventListener('page-changed', (e: PageChangedEvent) => {
+    if (e.detail == null) {
+      return
+    }
+    emit('navigateToPage', e.detail.page.toString())
+  })
+
+  infiniteScroller.value.addEventListener('pages-fetched', (e: PagesFetchedEvent<Image>) => {
+    if (e.detail == null) {
+      return
+    }
+    emit('update:pagesFetched', e.detail)
+  })
 
   infiniteScroller.value.currentPage = parseInt(props.currentPage)
   infiniteScroller.value.loadInitialPage()
+
+  watch(
+    () => props.currentPage,
+    (newPage) => {
+      infiniteScroller.value!.currentPage = parseInt(newPage)
+    },
+  )
 })
 </script>
 
