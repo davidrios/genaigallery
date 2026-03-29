@@ -1,8 +1,18 @@
 import { ref, computed, onMounted, onUnmounted, type Ref, watch } from 'vue'
 import type { Image } from '@/types'
 import { useFetch, useUrlSearchParams } from '@vueuse/core'
+import type { PagesFetchedEvent } from 'wc-infinite-scroller'
 
-export function useMediaOverlay(images: Ref<Image[]>) {
+export function useMediaOverlay(pagesFetched: Ref<PagesFetchedEvent<Image>['detail'] | null>) {
+  const indexedPages = computed(() => {
+    return Object.fromEntries(
+      (pagesFetched.value?.pages ?? []).map((page) => [page.pageNum, page.pageResult]),
+    )
+  })
+  const images = computed(() => indexedPages.value[pagesFetched.value?.mainPage ?? '']?.items ?? [])
+  const currentPage = computed(() => pagesFetched.value?.mainPage ?? 0)
+  const wantPage = ref(currentPage.value)
+
   const selectedImage = ref<Image | null>(null)
   const searchParams = useUrlSearchParams('hash', {
     removeFalsyValues: true,
@@ -54,10 +64,23 @@ export function useMediaOverlay(images: Ref<Image[]>) {
   const navigateImage = (dir: 'next' | 'prev') => {
     if (currentImageIndex.value === -1) return
     const newIdx = dir === 'next' ? currentImageIndex.value + 1 : currentImageIndex.value - 1
-    if (newIdx >= 0 && newIdx < images.value.length) {
-      const nextImg = images.value[newIdx]
-      if (nextImg) openImage(nextImg)
+    let nextImg
+
+    if (newIdx < 0 && currentPage.value > 1) {
+      wantPage.value = currentPage.value - 1
+      const prevImgs = indexedPages.value[wantPage.value]?.items ?? []
+      nextImg = prevImgs[prevImgs.length - 1]
+    } else if (newIdx >= images.value.length) {
+      const nextPage = indexedPages.value[currentPage.value + 1]?.items ?? []
+      if (nextPage.length > 0) {
+        wantPage.value = currentPage.value + 1
+        nextImg = nextPage[0]
+      }
+    } else if (newIdx >= 0 && newIdx < images.value.length) {
+      nextImg = images.value[newIdx]
     }
+
+    if (nextImg) openImage(nextImg)
   }
 
   const handleKeydown = (e: KeyboardEvent) => {
@@ -81,9 +104,14 @@ export function useMediaOverlay(images: Ref<Image[]>) {
     openImage,
     closeOverlay,
     navigateImage,
-    hasPrevious: computed(() => currentImageIndex.value > 0),
-    hasNext: computed(
-      () => currentImageIndex.value !== -1 && currentImageIndex.value < images.value.length - 1,
+    hasPrevious: computed(
+      () => currentImageIndex.value > 0 || (pagesFetched.value?.mainPage ?? 0) > 1,
     ),
+    hasNext: computed(
+      () =>
+        (currentImageIndex.value >= 0 && currentImageIndex.value < images.value.length - 1) ||
+        (indexedPages.value[currentPage.value + 1]?.items ?? []).length > 0,
+    ),
+    wantPage,
   }
 }

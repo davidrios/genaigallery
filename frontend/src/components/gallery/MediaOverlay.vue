@@ -131,7 +131,7 @@ const sortedMetadata = computed(() => {
               Generation Params
             </h3>
             <div class="space-y-3">
-              <div v-for="item in sortedMetadata" class="group">
+              <div v-for="item in sortedMetadata" :key="item.key" class="group">
                 <dt
                   class="mb-1 flex items-center justify-between text-xs font-medium break-all text-indigo-400"
                 >

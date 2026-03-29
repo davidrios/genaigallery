@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -67,12 +68,17 @@ type Directory struct {
 	Path string `json:"path"`
 }
 
+type BrowseResultImage struct {
+	*models.Image
+	VideoPreview string `json:"video_preview"`
+}
+
 type BrowseResult struct {
-	Directories []Directory    `json:"directories"`
-	Images      []models.Image `json:"images"`
-	Total       int64          `json:"total"`
-	Page        int            `json:"page"`
-	Pages       int            `json:"pages"`
+	Directories []Directory         `json:"directories"`
+	Images      []BrowseResultImage `json:"images"`
+	Total       int64               `json:"total"`
+	Page        int                 `json:"page"`
+	Pages       int                 `json:"pages"`
 }
 
 func toFTSQuery(origStr string) string {
@@ -95,6 +101,47 @@ func toFTSQuery(origStr string) string {
 	}
 
 	return strings.Join(ret, " ")
+}
+
+func generateVideoPreview(image *models.Image) string {
+	if config.FfmpegPath == "" {
+		return ""
+	}
+
+	var dir string
+	if image.Path != "" {
+		dir = filepath.Join(config.ImagesDir, image.Path)
+	} else {
+		dir = config.ImagesDir
+	}
+
+	previewDir := filepath.Join(dir, ".video_preview")
+	previewName := image.Name + "__preview.jpg"
+	previewFullPath := filepath.Join(previewDir, previewName)
+
+	previewStaticBase := config.StaticImagesRoot
+	if image.Path != "" {
+		previewStaticBase += "/" + image.Path
+	}
+	previewStaticBase += "/.video_preview/" + previewName
+
+	if _, err := os.Stat(previewFullPath); err == nil {
+		return previewStaticBase
+	}
+
+	if err := os.MkdirAll(previewDir, 0755); err != nil {
+		log.Printf("failed to create preview dir for %s: %v", image.Name, err)
+		return ""
+	}
+
+	videoFullPath := filepath.Join(dir, image.Name)
+	cmd := exec.Command(config.FfmpegPath, "-i", videoFullPath, "-vframes", "1", "-q:v", "2", previewFullPath)
+	if err := cmd.Run(); err != nil {
+		log.Printf("ffmpeg preview generation failed for %s: %v", image.Name, err)
+		return ""
+	}
+
+	return previewStaticBase
 }
 
 func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page, limit int) (*BrowseResult, error) {
@@ -138,9 +185,13 @@ func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page,
 	}
 
 	if q != "" {
-		q = toFTSQuery(q)
-		query = query.Joins("JOIN (select image_id, min(rank) rank from search_index where content match ? group by image_id order by rank) t1 on t1.image_id = images.id", q)
-		query = query.Order("t1.rank asc, created_at " + sortOrder)
+		if q != "*" {
+			q = toFTSQuery(q)
+			query = query.Joins("JOIN (select image_id, min(rank) rank from search_index where content match ? group by image_id order by rank) t1 on t1.image_id = images.id", q)
+			query = query.Order("t1.rank asc, created_at " + sortOrder)
+		} else {
+			query = query.Order("created_at " + sortOrder)
+		}
 	} else {
 		query = query.Order("created_at " + sortOrder)
 	}
@@ -167,9 +218,21 @@ func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page,
 		directories = make([]Directory, 0)
 	}
 
+	browseImages := make([]BrowseResultImage, len(images))
+	for i := range images {
+		videoPreview := ""
+		if strings.EqualFold(filepath.Ext(images[i].Name), ".mp4") {
+			videoPreview = generateVideoPreview(&images[i])
+		}
+		browseImages[i] = BrowseResultImage{
+			Image:        &images[i],
+			VideoPreview: videoPreview,
+		}
+	}
+
 	return &BrowseResult{
 		Directories: directories,
-		Images:      images,
+		Images:      browseImages,
 		Total:       total,
 		Page:        page,
 		Pages:       totalPages,

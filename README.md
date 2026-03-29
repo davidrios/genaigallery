@@ -24,6 +24,7 @@ You can configure the application using command-line flags or environment variab
 | `-db-path` | `DB_PATH` | `<images-dir>/genaigallery.db` | Where to store the SQLite database. |
 | `-port` | `PORT` | Auto (Starts at 5775) | The specific port to bind the web server to. |
 | `-require-auth` | `REQUIRE_AUTH=true` | `false` | Force Basic/Bearer authentication for all networks. |
+| `-ffmpeg-path` | `FFMPEG_PATH` | - | Path to the ffmpeg executable. Needed for video previews. |
 
 Example using flags:
 ```bash

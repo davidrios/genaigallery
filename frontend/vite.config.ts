@@ -15,7 +15,17 @@ const vueDevToolsInst = process.env.npm_lifecycle_event !== 'storybook' && vueDe
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
-  plugins: [vue(), tailwindcss(), vueDevToolsInst],
+  plugins: [
+    vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag) => tag.includes('infinite-scroller'),
+        },
+      },
+    }),
+    tailwindcss(),
+    vueDevToolsInst,
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

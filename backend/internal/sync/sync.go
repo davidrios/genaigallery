@@ -188,6 +188,9 @@ func findModifiedMedia(rootDir string, dbModTime time.Time, processFunc func(str
 		}
 
 		if d.IsDir() {
+			if d.Name() == ".video_preview" {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 

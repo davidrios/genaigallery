@@ -73,6 +73,7 @@ export const Default: Story = {
     ],
     images: getSampleImages('default'),
     error: null,
+    currentPage: '1',
   },
 }
 
@@ -84,6 +85,7 @@ export const NoImages: Story = {
     ],
     images: [],
     error: null,
+    currentPage: '1',
   },
 }
 
@@ -92,6 +94,7 @@ export const NoDirectories: Story = {
     directories: [],
     images: getSampleImages('no-dirs'),
     error: null,
+    currentPage: '1',
   },
 }
 
@@ -100,6 +103,7 @@ export const AllEmpty: Story = {
     directories: [],
     images: [],
     error: null,
+    currentPage: '1',
   },
 }
 
