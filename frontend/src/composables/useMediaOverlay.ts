@@ -4,12 +4,16 @@ import { useFetch, useUrlSearchParams } from '@vueuse/core'
 import type { PagesFetchedEvent } from 'wc-infinite-scroller'
 
 export function useMediaOverlay(pagesFetched: Ref<PagesFetchedEvent<Image>['detail'] | null>) {
+  function getPageImages(page: string | number) {
+    return indexedPages.value[page]?.items ?? []
+  }
+
   const indexedPages = computed(() => {
     return Object.fromEntries(
       (pagesFetched.value?.pages ?? []).map((page) => [page.pageNum, page.pageResult]),
     )
   })
-  const images = computed(() => indexedPages.value[pagesFetched.value?.mainPage ?? '']?.items ?? [])
+  const images = computed(() => getPageImages(pagesFetched.value?.mainPage ?? ''))
   const currentPage = computed(() => pagesFetched.value?.mainPage ?? 0)
   const wantPage = ref(currentPage.value)
 
@@ -47,6 +51,14 @@ export function useMediaOverlay(pagesFetched: Ref<PagesFetchedEvent<Image>['deta
   const openImage = async (image: Image) => {
     selectedImage.value = image
     searchParams.view = image.id
+    if (currentImageIndex.value === -1) {
+      for (const page of [currentPage.value + 1, currentPage.value - 1]) {
+        if (getPageImages(page).findIndex(findImageIndex) !== -1) {
+          wantPage.value = page
+          break
+        }
+      }
+    }
   }
 
   const closeOverlay = () => {
@@ -54,11 +66,13 @@ export function useMediaOverlay(pagesFetched: Ref<PagesFetchedEvent<Image>['deta
     searchParams.view = ''
   }
 
+  function findImageIndex(img: Image) {
+    return img.id === selectedImage.value?.id || img.path === selectedImage.value?.path
+  }
+
   const currentImageIndex = computed(() => {
     if (!selectedImage.value) return -1
-    return images.value.findIndex(
-      (img) => img.id === selectedImage.value?.id || img.path === selectedImage.value?.path,
-    )
+    return images.value.findIndex(findImageIndex)
   })
 
   const navigateImage = (dir: 'next' | 'prev') => {
@@ -68,10 +82,10 @@ export function useMediaOverlay(pagesFetched: Ref<PagesFetchedEvent<Image>['deta
 
     if (newIdx < 0 && currentPage.value > 1) {
       wantPage.value = currentPage.value - 1
-      const prevImgs = indexedPages.value[wantPage.value]?.items ?? []
+      const prevImgs = getPageImages(wantPage.value)
       nextImg = prevImgs[prevImgs.length - 1]
     } else if (newIdx >= images.value.length) {
-      const nextPage = indexedPages.value[currentPage.value + 1]?.items ?? []
+      const nextPage = getPageImages(currentPage.value + 1)
       if (nextPage.length > 0) {
         wantPage.value = currentPage.value + 1
         nextImg = nextPage[0]
@@ -110,7 +124,7 @@ export function useMediaOverlay(pagesFetched: Ref<PagesFetchedEvent<Image>['deta
     hasNext: computed(
       () =>
         (currentImageIndex.value >= 0 && currentImageIndex.value < images.value.length - 1) ||
-        (indexedPages.value[currentPage.value + 1]?.items ?? []).length > 0,
+        getPageImages(currentPage.value + 1).length > 0,
     ),
     wantPage,
   }
