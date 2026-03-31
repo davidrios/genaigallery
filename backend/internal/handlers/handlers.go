@@ -161,7 +161,7 @@ func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page,
 	gallerysync.CheckSync(db)
 
 	pathParam = strings.TrimLeft(pathParam, "/")
-	if strings.Contains(pathParam, ".") {
+	if strings.Contains(pathParam, "..") {
 		return nil, fmt.Errorf("Invalid path")
 	}
 
@@ -290,11 +290,13 @@ func Browse(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+var ErrInvalidPrefix = errors.New("invalid prefix path")
+
 func UploadCore(files []*multipart.FileHeader, prefix string) ([]*models.Image, error) {
 	prefix = strings.Trim(prefix, "/")
 
-	if strings.Contains(prefix, ".") {
-		return nil, errors.New("invalid prefix path")
+	if strings.Contains(prefix, "..") {
+		return nil, ErrInvalidPrefix
 	}
 
 	dirName := filepath.Dir(prefix)
@@ -315,9 +317,9 @@ func UploadCore(files []*multipart.FileHeader, prefix string) ([]*models.Image, 
 	db := database.GetDB()
 	var createdImages []*models.Image
 
-	for _, file := range files {
+	for idx, file := range files {
 		timestamp := time.Now().Format("20060102150405")
-		filename := fmt.Sprintf("%s_%s%s", baseName, timestamp, filepath.Ext(file.Filename))
+		filename := fmt.Sprintf("%s_%s%d%s", baseName, timestamp, idx, filepath.Ext(file.Filename))
 		savePath := filepath.Join(fullDir, filename)
 
 		src, err := file.Open()
@@ -366,8 +368,22 @@ func Upload(c *gin.Context) {
 
 	createdImages, err := UploadCore(files, prefix)
 	if err != nil {
+		if errors.Is(err, ErrInvalidPrefix) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	for idx, image := range createdImages {
+		var imgPath string
+		if image.Path != "" {
+			imgPath = config.StaticImagesRoot + "/" + image.Path + "/" + image.Name
+		} else {
+			imgPath = config.StaticImagesRoot + "/" + image.Name
+		}
+		createdImages[idx].Path = appendImageToken(c, imgPath)
 	}
 
 	c.JSON(http.StatusOK, createdImages)
