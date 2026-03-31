@@ -156,7 +156,7 @@ func generateVideoPreview(image *models.Image) string {
 	return previewStaticBase
 }
 
-func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page, limit int) (*BrowseResult, error) {
+func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, sortByDate bool, page, limit int) (*BrowseResult, error) {
 	db := database.GetDB()
 	gallerysync.CheckSync(db)
 
@@ -200,7 +200,11 @@ func BrowseCore(pathParam string, q string, inPath bool, sortOrder string, page,
 		if q != "*" {
 			q = toFTSQuery(q)
 			query = query.Joins("JOIN (select image_id, min(rank) rank from search_index where content match ? group by image_id order by rank) t1 on t1.image_id = images.id", q)
-			query = query.Order("t1.rank asc, created_at " + sortOrder)
+			if sortByDate {
+				query = query.Order("created_at " + sortOrder)
+			} else {
+				query = query.Order("t1.rank asc, created_at " + sortOrder)
+			}
 		} else {
 			query = query.Order("created_at " + sortOrder)
 		}
@@ -264,7 +268,9 @@ func Browse(c *gin.Context) {
 
 	inPath := c.Query("inPath") == "true"
 
-	result, err := BrowseCore(pathParam, q, inPath, sortOrder, page, limit)
+	sortByDate := c.Query("sortByDate") == "true"
+
+	result, err := BrowseCore(pathParam, q, inPath, sortOrder, sortByDate, page, limit)
 	if err != nil {
 		if err.Error() == "Invalid path" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

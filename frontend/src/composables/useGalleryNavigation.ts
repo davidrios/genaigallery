@@ -7,6 +7,7 @@ export interface SearchParams {
   sort: 'desc' | 'asc'
   page: string
   inPath: string
+  sortByDate: string
 }
 
 export function useGalleryNavigation() {
@@ -39,6 +40,10 @@ export function useGalleryNavigation() {
     searchParams.sort = !searchParams.sort || searchParams.sort === 'desc' ? 'asc' : 'desc'
   }
 
+  const toggleSortByDate = () => {
+    searchParams.sortByDate = !searchParams.sortByDate || searchParams.sortByDate === 'false' ? 'true' : 'false'
+  }
+
   const performSearch = useDebounceFn((queryVal: string) => {
     searchParams.q = queryVal
     searchParams.page = '1'
@@ -57,11 +62,13 @@ export function useGalleryNavigation() {
           sort: searchParams.sort ?? 'desc',
           page: searchParams.page ?? '1',
           inPath: searchParams.inPath ?? 'false',
+          sortByDate: searchParams.sortByDate ?? 'false',
         }) as SearchParams,
     ),
     breadcrumbs,
     navigateTo,
     toggleSort,
+    toggleSortByDate,
     changeInPath,
     performSearch,
     navigateToPage,

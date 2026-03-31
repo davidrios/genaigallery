@@ -16,6 +16,7 @@ const {
   breadcrumbs,
   navigateTo,
   toggleSort,
+  toggleSortByDate,
   changeInPath,
   performSearch,
   navigateToPage,
@@ -76,7 +77,8 @@ watch(searchParams, (newParams) => {
     newParams.q !== oldParams.value.q ||
     newParams.path !== oldParams.value.path ||
     newParams.sort !== oldParams.value.sort ||
-    newParams.inPath !== oldParams.value.inPath
+    newParams.inPath !== oldParams.value.inPath ||
+    newParams.sortByDate !== oldParams.value.sortByDate
   ) {
     id.value += 1
   }
@@ -91,9 +93,11 @@ watch(searchParams, (newParams) => {
       v-model:in-path="searchParams.inPath"
       :breadcrumbs="breadcrumbs"
       :sort-order="searchParams.sort"
+      :sort-by-date="searchParams.sortByDate"
       @navigate="navigateTo"
       @search="performSearch"
       @toggle-sort="toggleSort"
+      @toggle-sort-by-date="toggleSortByDate"
       @change-in-path="changeInPath"
     />
 

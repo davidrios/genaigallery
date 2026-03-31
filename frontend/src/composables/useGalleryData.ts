@@ -10,6 +10,7 @@ export async function fetchBrowse(searchParams: SearchParams): Promise<BrowseRes
     sort: searchParams.sort,
     page: searchParams.page,
     inPath: searchParams.inPath,
+    sortByDate: searchParams.sortByDate,
   })
 
   const res = await fetch(`/api/browse?${apiParams.toString()}`)
@@ -29,6 +30,7 @@ export function useGalleryData(searchParams: Ref<SearchParams>) {
       sort: searchParams.value.sort,
       // page: searchParams.value.page,
       inPath: searchParams.value.inPath,
+      sortByDate: searchParams.value.sortByDate,
     })
 
     return `/api/browse?${apiParams.toString()}`

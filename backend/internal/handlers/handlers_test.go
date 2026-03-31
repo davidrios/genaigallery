@@ -88,7 +88,7 @@ func TestBrowseCore(t *testing.T) {
 	}
 
 	t.Run("Browse Root Directory", func(t *testing.T) {
-		res, err := BrowseCore("", "", false, "asc", 1, 50)
+		res, err := BrowseCore("", "", false, "asc", false, 1, 50)
 		if err != nil {
 			t.Fatalf("BrowseCore failed: %v", err)
 		}
@@ -112,7 +112,7 @@ func TestBrowseCore(t *testing.T) {
 	})
 
 	t.Run("Browse Root Directory paginated", func(t *testing.T) {
-		res, err := BrowseCore("", "", false, "asc", 1, 3)
+		res, err := BrowseCore("", "", false, "asc", false, 1, 3)
 		if err != nil {
 			t.Fatalf("BrowseCore failed: %v", err)
 		}
@@ -142,7 +142,7 @@ func TestBrowseCore(t *testing.T) {
 			t.Errorf("Expected to see 'video' directory in browse results")
 		}
 
-		res, err = BrowseCore("", "", false, "asc", 2, 3)
+		res, err = BrowseCore("", "", false, "asc", false, 2, 3)
 		if err != nil {
 			t.Fatalf("BrowseCore failed: %v", err)
 		}
@@ -153,7 +153,7 @@ func TestBrowseCore(t *testing.T) {
 	})
 
 	t.Run("Browse Subdirectory", func(t *testing.T) {
-		res, err := BrowseCore("video", "", false, "asc", 1, 50)
+		res, err := BrowseCore("video", "", false, "asc", false, 1, 50)
 		if err != nil {
 			t.Fatalf("BrowseCore failed for 'video' subdir: %v", err)
 		}
@@ -181,7 +181,7 @@ func TestBrowseCore(t *testing.T) {
 	})
 
 	t.Run("Browse Sub-subdirectory", func(t *testing.T) {
-		res, err := BrowseCore("video/subfolder", "", false, "asc", 1, 50)
+		res, err := BrowseCore("video/subfolder", "", false, "asc", false, 1, 50)
 		if err != nil {
 			t.Fatalf("BrowseCore failed for 'video/subfolder' subdir: %v", err)
 		}
@@ -217,7 +217,7 @@ func TestBrowseCore(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.query, func(t *testing.T) {
-				res, err := BrowseCore("", tt.query, false, "asc", 1, 50)
+				res, err := BrowseCore("", tt.query, false, "asc", false, 1, 50)
 				if err != nil {
 					t.Fatalf("BrowseCore FTS query failed: %v", err)
 				}
@@ -229,7 +229,7 @@ func TestBrowseCore(t *testing.T) {
 		}
 
 		t.Run("Search while in path with inPath false", func(t *testing.T) {
-			res, err := BrowseCore("video", "qwen", false, "asc", 1, 50)
+			res, err := BrowseCore("video", "qwen", false, "asc", false, 1, 50)
 			if err != nil {
 				t.Fatalf("BrowseCore FTS query failed: %v", err)
 			}
@@ -240,7 +240,7 @@ func TestBrowseCore(t *testing.T) {
 		})
 
 		t.Run("In path 1", func(t *testing.T) {
-			res, err := BrowseCore("", "wan2.2", true, "asc", 1, 50)
+			res, err := BrowseCore("", "wan2.2", true, "asc", false, 1, 50)
 			if err != nil {
 				t.Fatalf("BrowseCore FTS query failed: %v", err)
 			}
@@ -251,7 +251,7 @@ func TestBrowseCore(t *testing.T) {
 		})
 
 		t.Run("In path 2", func(t *testing.T) {
-			res, err := BrowseCore("video/subfolder", "qwen OR wan2.2", true, "asc", 1, 50)
+			res, err := BrowseCore("video/subfolder", "qwen OR wan2.2", true, "asc", false, 1, 50)
 			if err != nil {
 				t.Fatalf("BrowseCore FTS query failed: %v", err)
 			}

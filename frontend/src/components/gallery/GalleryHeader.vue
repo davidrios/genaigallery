@@ -4,6 +4,7 @@ defineProps<{
   searchQuery: string
   sortOrder: 'asc' | 'desc'
   inPath: string
+  sortByDate: string
 }>()
 
 const emit = defineEmits<{
@@ -12,6 +13,7 @@ const emit = defineEmits<{
   (e: 'update:inPath', value: string): void
   (e: 'search', value: string): void
   (e: 'toggleSort'): void
+  (e: 'toggleSortByDate'): void
   (e: 'changeInPath', value: string): void
 }>()
 
@@ -81,14 +83,23 @@ import { Home, Search } from 'lucide-vue-next'
       </div>
     </div>
 
-    <button
-      class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-      @click="emit('toggleSort')"
-    >
-      <span>Sort by Date</span>
-      <span class="rounded bg-gray-100 px-2 py-0.5 text-xs uppercase dark:bg-gray-900">{{
-        sortOrder
-      }}</span>
-    </button>
+    <div class="flex items-center gap-2">
+      <button
+        v-if="searchQuery"
+        class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+        :title="sortByDate === 'true' ? 'Currently sorting by date — click to sort by relevance rank' : 'Currently sorting by relevance rank — click to sort by date'"
+        @click="emit('toggleSortByDate')"
+      >
+        <span>Order by</span>
+        <span class="rounded bg-gray-100 px-2 py-0.5 text-xs uppercase dark:bg-gray-900">{{ sortByDate === 'true' ? 'Date' : 'Rank' }}</span>
+      </button>
+      <button
+        class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+        @click="emit('toggleSort')"
+      >
+        <span>Sort by Date</span>
+        <span class="rounded bg-gray-100 px-2 py-0.5 text-xs uppercase dark:bg-gray-900">{{ sortOrder }}</span>
+      </button>
+    </div>
   </div>
 </template>
