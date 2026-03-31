@@ -109,7 +109,24 @@ func main() {
 
 	r.Use(middleware.NetworkAuthMiddleware())
 
-	r.Static(config.StaticImagesRoot, config.ImagesDir)
+	// Serve images, requiring a short-lived JWT when the API client used Bearer auth.
+	// Basic Auth and local-network requests are already gated by NetworkAuthMiddleware.
+	r.GET(config.StaticImagesRoot+"/*filepath", func(c *gin.Context) {
+		if c.GetBool("bearer_authenticated") {
+			if !auth.ValidateImageToken(c.Query("token")) {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired image token"})
+				return
+			}
+		}
+
+		filePath := filepath.Join(config.ImagesDir, filepath.Clean(c.Param("filepath")))
+		if !strings.HasPrefix(filePath, config.ImagesDir) {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
+		c.File(filePath)
+	})
 
 	api := r.Group("/api")
 	{

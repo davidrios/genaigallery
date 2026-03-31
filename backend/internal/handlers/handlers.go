@@ -17,6 +17,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"genai-gallery-backend/internal/auth"
 	"genai-gallery-backend/internal/config"
 	"genai-gallery-backend/internal/database"
 	"genai-gallery-backend/internal/models"
@@ -29,6 +30,15 @@ func GetImageCore(id int) (*models.Image, error) {
 		return nil, err
 	}
 	return &image, nil
+}
+
+// appendImageToken appends a short-lived JWT as a query parameter only when
+// the request was authenticated via Bearer token.
+func appendImageToken(c *gin.Context, path string) string {
+	if !c.GetBool("bearer_authenticated") {
+		return path
+	}
+	return path + "?token=" + auth.GenerateImageToken()
 }
 
 func GetImage(c *gin.Context) {
@@ -48,11 +58,13 @@ func GetImage(c *gin.Context) {
 
 	basePath := image.Path
 
+	var fullPath string
 	if image.Path != "" {
-		image.Path = config.StaticImagesRoot + "/" + image.Path + "/" + image.Name
+		fullPath = config.StaticImagesRoot + "/" + image.Path + "/" + image.Name
 	} else {
-		image.Path = config.StaticImagesRoot + "/" + image.Name
+		fullPath = config.StaticImagesRoot + "/" + image.Name
 	}
+	image.Path = appendImageToken(c, fullPath)
 
 	c.JSON(http.StatusOK, struct {
 		*models.Image
@@ -263,10 +275,15 @@ func Browse(c *gin.Context) {
 	}
 
 	for idx, image := range result.Images {
+		var imgPath string
 		if image.Path != "" {
-			result.Images[idx].Path = config.StaticImagesRoot + "/" + image.Path + "/" + image.Name
+			imgPath = config.StaticImagesRoot + "/" + image.Path + "/" + image.Name
 		} else {
-			result.Images[idx].Path = config.StaticImagesRoot + "/" + image.Name
+			imgPath = config.StaticImagesRoot + "/" + image.Name
+		}
+		result.Images[idx].Path = appendImageToken(c, imgPath)
+		if result.Images[idx].VideoPreview != "" {
+			result.Images[idx].VideoPreview = appendImageToken(c, result.Images[idx].VideoPreview)
 		}
 	}
 

@@ -37,6 +37,7 @@ func NetworkAuthMiddleware() gin.HandlerFunc {
 			if len(parts) == 2 {
 				token := parts[1]
 				if token == auth.GlobalBearerToken {
+					c.Set("bearer_authenticated", true)
 					c.Next()
 					return
 				}
@@ -50,6 +51,15 @@ func NetworkAuthMiddleware() gin.HandlerFunc {
 		if hasBasicAuth && password == auth.GlobalBasicAuthPassword {
 			c.Next()
 			return
+		}
+
+		// Allow short-lived image JWTs on the image serving route, so Bearer-auth
+		// API clients can embed signed URLs without sending credentials per-request.
+		if strings.HasPrefix(c.Request.URL.Path, config.StaticImagesRoot+"/") {
+			if auth.ValidateImageToken(c.Query("token")) {
+				c.Next()
+				return
+			}
 		}
 
 		// If no valid auth was provided, issue a WWW-Authenticate challenge for Basic Auth
